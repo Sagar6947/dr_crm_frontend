@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { label: "Doctors", href: "/admin/doctors", icon: UserRound },
         { label: "Appointments", href: "/admin/appointments", icon: CalendarCheck },
         { label: "Patients", href: "/admin/patients", icon: Users },
-        { label: "Medicine Stock", href: "/admin/inventory", icon: Package },
+        { label: "Medicine Stock", href: "/admin/medicine-stock", icon: Package },
         { label: "Billing", href: "/admin/billing", icon: CreditCard },
     ];
 
