@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
+@theme {
+  --color-medical-teal: #0d9488;
+  --color-medical-teal-dark: #0f766e;
+  --color-medical-teal-soft: #f0fdfa;
+  --color-medical-slate-bg: #f8fafc;
+  --color-medical-border: #e2e8f0;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: var(--color-medical-slate-bg);
+  --foreground: #334155;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+button{
+  cursor: pointer;
+}
+
+@layer utilities {
+  .glass-header {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-medical-border);
+  }
+
+  .medical-card {
+    background: #ffffff;
+    border: 1px solid var(--color-medical-border);
+    border-radius: 1.5rem;
+    padding: 2.5rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .medical-card:hover {
+    border-color: #99f6e4;
+    box-shadow: 0 25px 50px -12px rgba(13, 148, 136, 0.08);
+    transform: translateY(-4px);
+  }
+
+  .btn-primary {
+    background-color: var(--color-medical-teal);
+    color: white;
+    padding: 0.75rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-medical-teal-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(13, 148, 136, 0.2);
+  }
+
+  .btn-secondary {
+    padding: 0.75rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-secondary:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+  }
+}
+
