@@ -135,3 +135,57 @@ export const billingService = {
         method: 'DELETE',
     }),
 };
+
+
+
+export const appointmentService = {
+    // Sabhi appointments ki list
+    getAll: () => request('/appointment/list'),
+
+    // Naya appointment add karo
+    add: (formData: any) => {
+        const params = new URLSearchParams(formData).toString();
+        return request('/appointment/add', {
+            method: 'POST',
+            body: params,
+        });
+    },
+
+    // ID se ek appointment ka detail
+    getById: (id: string) => request(`/appointment/${id}`),
+
+    // Appointment update karo
+    update: (id: string, formData: any) => {
+        const params = new URLSearchParams(formData).toString();
+        return request(`/appointment/update/${id}`, {
+            method: 'PUT',
+            body: params,
+        });
+    },
+
+    // Appointment delete karo
+    delete: (id: string) => request(`/appointment/delete/${id}`, {
+        method: 'DELETE',
+    }),
+
+    // Status update karo (confirm, cancel, complete)
+    updateStatus: (id: string, status: string) => {
+        const params = new URLSearchParams({ status }).toString();
+        return request(`/appointment/status/${id}`, {
+            method: 'PUT',
+            body: params,
+        });
+    },
+
+    // Doctor ke appointments
+    getByDoctor: (doctorId: string) => request(`/appointment/doctor/${doctorId}`),
+
+    // Patient ke appointments
+    getByPatient: (patientId: string) => request(`/appointment/patient/${patientId}`),
+
+    // Aaj ke appointments
+    getTodays: () => {
+        const today = new Date().toISOString().split('T')[0];
+        return request(`/appointment/list?date=${today}`);
+    },
+};
