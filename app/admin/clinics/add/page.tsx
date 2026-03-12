@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
     Hospital,
@@ -21,13 +21,14 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clinicService, geoService } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function AddClinicPage() {
+
     const router = useRouter();
     const [logo, setLogo] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [globalError, setGlobalError] = useState<string | null>(null);
     const [states, setStates] = useState<{ id: string; state_name: string }[]>([]);
     const [cities, setCities] = useState<{ city_id: string; city_name: string }[]>([]);
     const [isLoadingStates, setIsLoadingStates] = useState(false);
@@ -79,23 +80,34 @@ export default function AddClinicPage() {
     };
 
     // Load states on mount
-    React.useEffect(() => {
+    useEffect(() => {
+        const controller = new AbortController();
         const fetchStates = async () => {
             setIsLoadingStates(true);
             try {
-                const response = await geoService.getStates();
+                const response = await geoService.getStates(controller.signal);
                 setStates(response.data || []);
-            } catch (error) {
+            } catch (error: any) {
+                if (error.name === 'AbortError') return;
                 console.error("Failed to fetch states:", error);
             } finally {
                 setIsLoadingStates(false);
             }
         };
         fetchStates();
+
+        return () => {
+            controller.abort();
+        };
     }, []);
 
     // Load cities when state changes
+    const abortCitiesRef = useRef<AbortController | null>(null);
     const handleStateChange = async (stateId: string) => {
+        if (abortCitiesRef.current) abortCitiesRef.current.abort();
+        const controller = new AbortController();
+        abortCitiesRef.current = controller;
+
         const selectedState = states.find(s => String(s.id) === String(stateId));
 
         setFormData(prev => ({
@@ -108,12 +120,15 @@ export default function AddClinicPage() {
         if (stateId) {
             setIsLoadingCities(true);
             try {
-                const response = await geoService.getCities(stateId);
+                const response = await geoService.getCities(stateId, controller.signal);
                 setCities(response.data || []);
-            } catch (error) {
+            } catch (error: any) {
+                if (error.name === 'AbortError') return;
                 console.error("Failed to fetch cities:", error);
             } finally {
-                setIsLoadingCities(false);
+                if (abortCitiesRef.current === controller) {
+                    setIsLoadingCities(false);
+                }
             }
         }
     };
@@ -130,23 +145,24 @@ export default function AddClinicPage() {
         e.preventDefault();
         setIsSubmitting(true);
         setErrors({});
-        setGlobalError(null);
 
         try {
             await clinicService.add(formData);
+            toast.success("Clinic created successfully!");
             router.push("/admin/clinics");
         } catch (error: any) {
             if (error.status === 400 && typeof error.message === 'object') {
                 setErrors(error.message);
+                toast.error("Please fill in all required fields correctly.");
                 scrollToError(error.message);
             } else if (error.message) {
-                setGlobalError(error.message);
+                toast.error(error.message);
                 // If it's a field-specific error from our custom duplicate check
                 if (error.message.includes("Name")) scrollToError({ name: true });
                 else if (error.message.includes("Phone")) scrollToError({ primary_phone: true });
                 else if (error.message.includes("Email")) scrollToError({ email: true });
             } else {
-                setGlobalError("An unexpected error occurred. Please try again.");
+                toast.error("An unexpected error occurred. Please try again.");
             }
         } finally {
             setIsSubmitting(false);
@@ -184,12 +200,6 @@ export default function AddClinicPage() {
                         </div>
                     </div>
                 </div>
-
-                {globalError && (
-                    <div className="bg-rose-50 border border-rose-200 text-rose-600 p-4 rounded-2xl text-xs font-bold uppercase tracking-widest flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                        <X className="w-5 h-5" /> {globalError}
-                    </div>
-                )}
 
                 <form className="space-y-6" onSubmit={handleSubmit}>
                     {/* Section A: Basic Details */}
