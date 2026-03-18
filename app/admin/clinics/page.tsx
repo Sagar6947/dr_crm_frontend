@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
     Hospital,
@@ -16,10 +16,13 @@ import {
     Filter,
     Download,
     ExternalLink,
-    Eye
+    Eye,
+    Loader2
 } from "lucide-react";
 import Link from "next/link";
 
+import { toast } from "sonner";
+import { clinicService } from "@/lib/api";
 
 interface Clinic {
     id: string;
@@ -32,26 +35,102 @@ interface Clinic {
     joined: string;
 }
 
-const INITIAL_CLINICS: Clinic[] = [
-    { id: "1", name: "City Care Hospital", code: "CC-01", location: "Bhopal, MP", doctors: 8, patients: 450, status: "Active", joined: "12 Jan 2024" },
-    { id: "2", name: "Sunshine Pediatric", code: "SP-04", location: "Indore, MP", doctors: 5, patients: 280, status: "Active", joined: "05 Feb 2024" },
-    { id: "3", name: "Modern Dental Clinic", code: "MD-09", location: "New York, NY", doctors: 3, patients: 120, status: "Inactive", joined: "20 Mar 2024" },
-    { id: "4", name: "Riverside Wellness", code: "RW-12", location: "Portland, OR", doctors: 12, patients: 890, status: "Active", joined: "01 Apr 2024" },
-];
-
 export default function ClinicsManager() {
-    const [clinics, setClinics] = useState<Clinic[]>(INITIAL_CLINICS);
+    const [clinics, setClinics] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
+    const [pagination, setPagination] = useState({
+        total_records: 0,
+        current_page: 1,
+        total_pages: 0,
+        limit: 10
+    });
+
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    const fetchClinics = async (page = 1, search = debouncedSearch) => {
+        // Cancel previous request if any
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        // Create new AbortController
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        setIsLoading(true);
+        try {
+            const response = await clinicService.getAll({
+                page_no: page,
+                limit: pagination.limit,
+                search: search
+            }, controller.signal);
+            
+            if (response.status === 200) {
+                setClinics(response.data || []);
+                if (response.pagination) {
+                    setPagination(response.pagination);
+                }
+            } else {
+                toast.error(response.message || "Failed to fetch clinics");
+            }
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                return; // Ignore cancellation errors
+            }
+            toast.error(error.message || "Failed to fetch clinics");
+            console.error("Fetch clinics error:", error);
+        } finally {
+            // Only stop loading if this is still the current request
+            if (abortControllerRef.current === controller) {
+                setIsLoading(false);
+            }
+        }
+    };
+
+    // Initial fetch and pagination changes
+    useEffect(() => {
+        fetchClinics(pagination.current_page);
+        
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, [pagination.current_page]);
+
+    // Search debouncing logic
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Trigger fetch when debounced search changes
+    useEffect(() => {
+        setPagination(prev => ({ ...prev, current_page: 1 }));
+        fetchClinics(1, debouncedSearch);
+    }, [debouncedSearch]);
+
+    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= pagination.total_pages) {
+            setPagination(prev => ({ ...prev, current_page: newPage }));
+        }
+    };
 
     const handleAddClinic = (e: React.FormEvent) => {
         // This will be handled in the new /admin/clinics/add page
     };
 
-    const filteredClinics = clinics.filter(c =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.code.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // We use server-side filtering now
+    const filteredClinics = clinics;
 
     return (
         <AdminLayout>
@@ -73,13 +152,17 @@ export default function ClinicsManager() {
                 {/* Filters & Search */}
                 <div className="medical-card !p-4 !rounded-3xl flex flex-col md:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                        {isLoading ? (
+                            <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-medical-teal animate-spin" />
+                        ) : (
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                        )}
                         <input
                             type="text"
                             placeholder="Search clinics by name, code or location..."
                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-medical-teal/20 outline-none"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={handleSearch}
                         />
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
@@ -107,7 +190,27 @@ export default function ClinicsManager() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {filteredClinics.map((clinic) => (
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-8 py-20 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-medical-teal animate-bounce">
+                                                    <Hospital className="w-6 h-6" />
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                                                    <Loader2 className="w-3 h-3 animate-spin" /> Retrieving clinical...
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filteredClinics.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-8 py-10 text-center text-slate-400 font-medium text-sm">
+                                            No clinics found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredClinics.map((clinic) => (
                                     <tr key={clinic.id} className="group hover:bg-slate-50/30 transition-colors">
                                         <td className="px-8 py-6">
                                             <div className="flex items-center gap-4">
@@ -116,30 +219,23 @@ export default function ClinicsManager() {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-bold text-slate-800">{clinic.name}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{clinic.code}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{clinic.clinic_code}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-8 py-6">
                                             <div className="flex items-center gap-2 text-slate-500">
                                                 <MapPin className="w-3.5 h-3.5" />
-                                                <span className="text-sm font-medium">{clinic.location}</span>
+                                                <span className="text-sm font-medium">{clinic.city}, {clinic.state}</span>
                                             </div>
                                         </td>
                                         <td className="px-8 py-6">
                                             <div className="flex -space-x-3 overflow-hidden">
-                                                {[...Array(Math.min(clinic.doctors, 3))].map((_, i) => (
-                                                    <div key={i} className="inline-block h-8 w-8 rounded-full border-2 border-white bg-teal-50 flex items-center justify-center text-[10px] font-bold text-medical-teal">
-                                                        D
-                                                    </div>
-                                                ))}
-                                                {clinic.doctors > 3 && (
-                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-50 text-[10px] font-bold text-slate-500">
-                                                        +{clinic.doctors - 3}
-                                                    </div>
-                                                )}
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-50 text-[10px] font-bold text-slate-500">
+                                                    0
+                                                </div>
                                             </div>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase mt-2 tracking-tighter">{clinic.doctors} Doctors • {clinic.patients} Patients</p>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase mt-2 tracking-tighter">0 Doctors • 0 Patients</p>
                                         </td>
                                         <td className="px-8 py-6">
                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${clinic.status === "Active"
@@ -150,7 +246,7 @@ export default function ClinicsManager() {
                                                 {clinic.status}
                                             </span>
                                         </td>
-                                        <td className="px-8 py-6 text-sm font-medium text-slate-600">{clinic.joined}</td>
+                                        <td className="px-8 py-6 text-sm font-medium text-slate-600">{clinic.create_date}</td>
                                         <td className="px-8 py-6">
                                             <div className="flex items-center gap-2">
                                                 <Link
@@ -168,19 +264,30 @@ export default function ClinicsManager() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                )))}
                             </tbody>
                         </table>
                     </div>
 
                     {/* Pagination */}
                     <div className="px-8 py-6 bg-slate-50/50 flex justify-between items-center">
-                        <p className="text-xs font-bold text-slate-400">Showing {filteredClinics.length} of {clinics.length} clinical nodes</p>
+                        <p className="text-xs font-bold text-slate-400">
+                            Showing {clinics.length} of {pagination.total_records} clinical nodes 
+                            (Page {pagination.current_page} of {pagination.total_pages})
+                        </p>
                         <div className="flex gap-2">
-                            <button className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors disabled:opacity-50" disabled>
+                            <button 
+                                onClick={() => handlePageChange(pagination.current_page - 1)}
+                                disabled={pagination.current_page <= 1 || isLoading}
+                                className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors disabled:opacity-50"
+                            >
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
-                            <button className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors">
+                            <button 
+                                onClick={() => handlePageChange(pagination.current_page + 1)}
+                                disabled={pagination.current_page >= pagination.total_pages || isLoading}
+                                className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors disabled:opacity-50"
+                            >
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>

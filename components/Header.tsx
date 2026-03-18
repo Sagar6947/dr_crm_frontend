@@ -53,9 +53,9 @@ const Header = () => {
                     <Link href="/appointment" className="btn-primary hidden sm:flex">
                         Book Appointment <Calendar className="w-4 h-4" />
                     </Link>
-                    <button className="btn-secondary hidden sm:block">
-                        Login
-                    </button>
+                    <Link href="/login" className="btn-secondary hidden sm:block">
+                    Login
+                    </Link>
                     <button
                         className="md:hidden p-2 text-slate-600"
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
