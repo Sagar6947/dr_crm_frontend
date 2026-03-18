@@ -36,7 +36,7 @@ import { clinicService } from "@/lib/api";
 export default function ClinicProfilePage() {
     const params = useParams();
     const id = params.id as string;
-    
+
     const [clinicData, setClinicData] = React.useState<any>(null);
     const [isLoading, setIsLoading] = React.useState(true);
 
@@ -59,6 +59,8 @@ export default function ClinicProfilePage() {
             }
         };
 
+
+
         fetchClinic();
     }, [id]);
 
@@ -70,7 +72,7 @@ export default function ClinicProfilePage() {
                         <Hospital className="w-8 h-8" />
                     </div>
                     <p className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Synchronizing Node...
+                        <Loader2 className="w-4 h-4 animate-spin" /> Synchronizing...
                     </p>
                 </div>
             </AdminLayout>
@@ -146,8 +148,8 @@ export default function ClinicProfilePage() {
                                     </div>
                                 </div>
                                 <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${statusText === "Active"
-                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-lg shadow-emerald-900/5 ring-1 ring-emerald-400/20"
-                                        : "bg-slate-100 text-slate-500 border-slate-200"
+                                    ? "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-lg shadow-emerald-900/5 ring-1 ring-emerald-400/20"
+                                    : "bg-slate-100 text-slate-500 border-slate-200"
                                     }`}>
                                     <span className={`w-2 h-2 rounded-full ${statusText === "Active" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
                                     {statusText}

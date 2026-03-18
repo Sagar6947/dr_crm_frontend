@@ -35,7 +35,6 @@ interface Clinic {
     joined: string;
 }
 
-
 export default function ClinicsManager() {
     const [clinics, setClinics] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
