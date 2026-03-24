@@ -27,6 +27,7 @@ export default function AddClinicPage() {
 
     const router = useRouter();
     const [logo, setLogo] = useState<string | null>(null);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [states, setStates] = useState<{ id: string; state_name: string }[]>([]);
@@ -62,6 +63,7 @@ export default function AddClinicPage() {
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setLogoFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setLogo(reader.result as string);
@@ -147,7 +149,20 @@ export default function AddClinicPage() {
         setErrors({});
 
         try {
-            await clinicService.add(formData);
+            const submitData = new FormData();
+            Object.entries(formData).forEach(([key, value]) => {
+                if (key === 'working_days') {
+                    submitData.append(key, (value as string[]).join(','));
+                } else {
+                    submitData.append(key, value as string);
+                }
+            });
+
+            if (logoFile) {
+                submitData.append('logo', logoFile);
+            }
+
+            await clinicService.add(submitData);
             toast.success("Clinic created successfully!");
             router.push("/admin/clinics");
         } catch (error: any) {
@@ -226,7 +241,7 @@ export default function AddClinicPage() {
                                         <>
                                             <img src={logo} alt="Preview" className="w-full h-full object-cover rounded-[22px]" />
                                             <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-[22px]">
-                                                <Trash2 className="text-white w-6 h-6" onClick={(e) => { e.stopPropagation(); setLogo(null); }} />
+                                                <Trash2 className="text-white w-6 h-6" onClick={(e) => { e.stopPropagation(); setLogo(null); setLogoFile(null); }} />
                                             </div>
                                         </>
                                     ) : (

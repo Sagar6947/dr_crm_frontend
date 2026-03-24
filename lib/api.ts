@@ -1,9 +1,14 @@
 export async function request(endpoint: string, options: RequestInit = {}) {
     try {
+        const defaultHeaders: any = {};
+        if (!(options.body instanceof FormData)) {
+            defaultHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
             ...options,
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                ...defaultHeaders,
                 ...options.headers,
             },
         });
@@ -42,10 +47,20 @@ export const clinicService = {
         return request(`/clinic/detail/${id}`, { signal });
     },
     add: (formData: any, signal?: AbortSignal) => {
-        const params = new URLSearchParams(formData).toString();
+        const isFormData = formData instanceof FormData;
+        const body = isFormData ? formData : new URLSearchParams(formData).toString();
         return request('/clinic/add', {
             method: 'POST',
-            body: params,
+            body: body,
+            signal
+        });
+    },
+    update: (id: string, formData: any, signal?: AbortSignal) => {
+        const isFormData = formData instanceof FormData;
+        const body = isFormData ? formData : new URLSearchParams(formData).toString();
+        return request(`/clinic/edit/${id}`, {
+            method: 'POST',
+            body: body,
             signal
         });
     },
