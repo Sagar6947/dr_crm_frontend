@@ -41,10 +41,10 @@ export const geoService = {
 
 
 export const patientService = {
-    // Sabhi patients ki list
+    // all patients list
     getAll: () => request('/patient/list'),
 
-    // Naya patient add karo
+    // add patient
     add: (formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request('/patient/add', {
@@ -53,10 +53,10 @@ export const patientService = {
         });
     },
 
-    // ID se ek patient ka detail
+    // get patient by ID
     getById: (id: string) => request(`/patient/${id}`),
 
-    // Patient update karo
+    // update patient
     update: (id: string, formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request(`/patient/update/${id}`, {
@@ -65,7 +65,7 @@ export const patientService = {
         });
     },
 
-    // Patient delete karo
+    // delete patient
     delete: (id: string) => request(`/patient/delete/${id}`, {
         method: 'DELETE',
     }),
@@ -74,10 +74,10 @@ export const patientService = {
 
 
 export const doctorService = {
-    // Sabhi doctors ki list
+    // all doctors list
     getAll: () => request('/doctor/list'),
 
-    // Naya doctor add karo
+    // add doctor
     add: (formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request('/doctor/add', {
@@ -86,10 +86,10 @@ export const doctorService = {
         });
     },
 
-    // ID se ek doctor ka detail
+    // get doctor by ID
     getById: (id: string) => request(`/doctor/${id}`),
 
-    // Doctor update karo
+    // update doctor
     update: (id: string, formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request(`/doctor/update/${id}`, {
@@ -98,7 +98,7 @@ export const doctorService = {
         });
     },
 
-    // Doctor delete karo
+    // delete doctor
     delete: (id: string) => request(`/doctor/delete/${id}`, {
         method: 'DELETE',
     }),
@@ -106,10 +106,10 @@ export const doctorService = {
 
 
 export const billingService = {
-    // Sabhi bills ki list
+    // all bills list
     getAll: () => request('/billing/list'),
 
-    // Naya bill create karo
+    // add bill
     add: (formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request('/billing/add', {
@@ -118,10 +118,10 @@ export const billingService = {
         });
     },
 
-    // ID se ek bill ka detail
+    // get bill by ID
     getById: (id: string) => request(`/billing/${id}`),
 
-    // Bill update karo
+    // update bill
     update: (id: string, formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request(`/billing/update/${id}`, {
@@ -130,7 +130,7 @@ export const billingService = {
         });
     },
 
-    // Bill delete karo
+    // delete bill
     delete: (id: string) => request(`/billing/delete/${id}`, {
         method: 'DELETE',
     }),
@@ -139,10 +139,10 @@ export const billingService = {
 
 
 export const appointmentService = {
-    // Sabhi appointments ki list
+    // all appointments list
     getAll: () => request('/appointment/list'),
 
-    // Naya appointment add karo
+    // add appointment
     add: (formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request('/appointment/add', {
@@ -151,10 +151,10 @@ export const appointmentService = {
         });
     },
 
-    // ID se ek appointment ka detail
+    // get appointment by ID
     getById: (id: string) => request(`/appointment/${id}`),
 
-    // Appointment update karo
+    // update appointment
     update: (id: string, formData: any) => {
         const params = new URLSearchParams(formData).toString();
         return request(`/appointment/update/${id}`, {
@@ -163,12 +163,12 @@ export const appointmentService = {
         });
     },
 
-    // Appointment delete karo
+    // delete appointment
     delete: (id: string) => request(`/appointment/delete/${id}`, {
         method: 'DELETE',
     }),
 
-    // Status update karo (confirm, cancel, complete)
+    // update appointment status
     updateStatus: (id: string, status: string) => {
         const params = new URLSearchParams({ status }).toString();
         return request(`/appointment/status/${id}`, {
@@ -177,13 +177,13 @@ export const appointmentService = {
         });
     },
 
-    // Doctor ke appointments
+    // doctor's appointments
     getByDoctor: (doctorId: string) => request(`/appointment/doctor/${doctorId}`),
 
-    // Patient ke appointments
+    // patient's appointments
     getByPatient: (patientId: string) => request(`/appointment/patient/${patientId}`),
 
-    // Aaj ke appointments
+    // today's appointments
     getTodays: () => {
         const today = new Date().toISOString().split('T')[0];
         return request(`/appointment/list?date=${today}`);
