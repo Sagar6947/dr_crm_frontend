@@ -101,7 +101,19 @@ export const patientService = {
 };
 
 export const doctorService = {
-    getAll: (signal?: AbortSignal) => request('/doctor/list', { signal }),
+    // getAll: (signal?: AbortSignal) => request('/doctor/list', { signal }),
+    getAll: (params?: { page_no?: number; limit?: number; search?: string }, signal?: AbortSignal) => {
+    const body = new URLSearchParams({
+        page_no: String(params?.page_no || 1),
+        limit: String(params?.limit || 10),
+        search: params?.search || '',
+    }).toString();
+    return request('/doctor/list', {
+        method: 'POST',
+        body,
+        signal,
+    });
+},
     add: (formData: any, signal?: AbortSignal) => {
         const params = new URLSearchParams(formData).toString();
         return request('/doctor/add', {
@@ -110,15 +122,26 @@ export const doctorService = {
             signal
         });
     },
-    getById: (id: string, signal?: AbortSignal) => request(`/doctor/${id}`, { signal }),
+    // getById: (id: string, signal?: AbortSignal) => request(`/doctor/${id}`, { signal }),
+    getById: (id: string, signal?: AbortSignal) => request(`/doctor/detail/${id}`, { signal }),
+    // update: (id: string, formData: any, signal?: AbortSignal) => {
+    //     const params = new URLSearchParams(formData).toString();
+    //     return request(`/doctor/update/${id}`, {
+    //         method: 'PUT',
+    //         body: params,
+    //         signal
+    //     });
+    // }, 
+
     update: (id: string, formData: any, signal?: AbortSignal) => {
-        const params = new URLSearchParams(formData).toString();
-        return request(`/doctor/update/${id}`, {
-            method: 'PUT',
-            body: params,
-            signal
-        });
-    },
+    const isFormData = formData instanceof FormData;
+    const body = isFormData ? formData : new URLSearchParams(formData).toString();
+    return request(`/doctor/edit/${id}`, {
+        method: 'POST',
+        body,
+        signal
+    });
+},
     delete: (id: string, signal?: AbortSignal) => request(`/doctor/delete/${id}`, {
         method: 'DELETE',
         signal

@@ -194,9 +194,7 @@ export default function ClinicsManager() {
                                     <tr>
                                         <td colSpan={6} className="px-8 py-20 text-center">
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-medical-teal animate-bounce">
-                                                    <Hospital className="w-6 h-6" />
-                                                </div>
+                                               
                                                 <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
                                                     <Loader2 className="w-3 h-3 animate-spin" /> Retrieving clinical...
                                                 </div>
@@ -255,6 +253,16 @@ export default function ClinicsManager() {
                                                 >
                                                     View <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
                                                 </Link>
+
+                                                <Link
+//   href={`/admin/clinics/${clinic.id}/edit`}
+
+href={`/admin/clinics/add?id=${clinic.id}`}
+  className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-blue-500 uppercase tracking-widest hover:bg-blue-50"
+>
+  Edit
+</Link>
+
                                                 <Link
                                                     href={`/admin/clinics/${clinic.id}/manage`}
                                                     className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn"
@@ -299,3 +307,5 @@ export default function ClinicsManager() {
         </AdminLayout>
     );
 }
+ 
+
