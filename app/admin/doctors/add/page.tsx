@@ -70,6 +70,8 @@ function AddDoctorForm() {
                 const response = await doctorService.getById(doctorId, controller.signal);
                 if (response.status === 200) {
                     const d = response.data;
+                       
+
                     setFormData({
                         title: d.title || "Dr",
                         full_name: d.full_name || "",
@@ -88,7 +90,10 @@ function AddDoctorForm() {
                         status: d.status || "active",
                     });
                     // if (d.profile_photo_url) setProfilePhoto(d.profile_photo_url);
-                    if (d.profile_photo) setProfilePhoto(d.profile_photo);
+                    // if (d.profile_photo) setProfilePhoto(d.profile_photo);
+                    if (d.profile_photo_url) {
+  setProfilePhoto(d.profile_photo_url);
+}
                     if (d.medical_license_url) setLicenseFileName("Uploaded file");
                     if (d.govt_id_proof_url) setGovtIdFileName("Uploaded file");
                 } else {
