@@ -64,7 +64,22 @@ export const clinicService = {
             signal
         });
     },
+
+    // Clinic ke assigned doctors fetch karo
+getDoctors: (clinicId: string, signal?: AbortSignal) => {
+    return request(`/clinic/doctors/${clinicId}`, { signal });
+},
+
+// Doctors assign karo clinic me
+addDoctors: (body: string, signal?: AbortSignal) => {
+    return request('/clinic/add-doctor', {
+        method: 'POST',
+        body,
+        signal,
+    });
+},
 };
+
 
 export const geoService = {
     getStates: (signal?: AbortSignal) => {
@@ -76,7 +91,22 @@ export const geoService = {
 };
 
 export const patientService = {
-    getAll: (signal?: AbortSignal) => request('/patient/list', { signal }),
+    // getAll: (signal?: AbortSignal) => request('/patient/list', { signal }),
+    getAll: (
+  params: { page_no?: number; limit?: number; search?: string },
+  signal?: AbortSignal
+) => {
+  const formData = new FormData();
+  formData.append("page_no", String(params?.page_no || 1));
+  formData.append("limit", String(params?.limit || 10));
+  formData.append("search", params?.search || "");
+
+  return request('/patient/list', {
+    method: 'POST',
+    body: formData,
+    signal,
+  });
+},
     add: (formData: any, signal?: AbortSignal) => {
         const params = new URLSearchParams(formData).toString();
         return request('/patient/add', {
@@ -85,7 +115,9 @@ export const patientService = {
             signal
         });
     },
-    getById: (id: string, signal?: AbortSignal) => request(`/patient/${id}`, { signal }),
+    // getById: (id: string, signal?: AbortSignal) => request(`/patient/${id}`, { signal }),
+    getById: (id: string, signal?: AbortSignal) =>
+    request(`/patient/detail/${id}`, { signal }),
     update: (id: string, formData: any, signal?: AbortSignal) => {
         const params = new URLSearchParams(formData).toString();
         return request(`/patient/update/${id}`, {
