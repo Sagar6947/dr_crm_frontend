@@ -38,7 +38,7 @@ export default function LoginPage() {
   });
 
   const staticCredentials = {
-    email: "admin@drcrm.com",
+    email: "admin@gmail.com",
     password: "admin123",
   };
 
