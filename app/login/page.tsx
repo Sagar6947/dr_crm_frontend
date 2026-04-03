@@ -1,22 +1,63 @@
 
+// "use client";
+
+// import { useState } from "react";
+// import { HeartPulse, Eye, EyeOff, ArrowRight } from "lucide-react";
+// import Link from "next/link";
+// import Header from "@/components/Header";
+
+// export default function LoginPage() {
+//   const [showPassword, setShowPassword] = useState(false);
+//   const [form, setForm] = useState({ email: "", password: "" });
+
+//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     setForm({ ...form, [e.target.name]: e.target.value });
+//   };
+
+//   const handleSubmit = (e: React.FormEvent) => {
+//     e.preventDefault();
+//     console.log(form);
+//   };
 "use client";
 
 import { useState } from "react";
 import { HeartPulse, Eye, EyeOff, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const staticCredentials = {
+    email: "admin@gmail.com",
+    password: "admin123",
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(form);
+
+    if (
+      form.email === staticCredentials.email &&
+      form.password === staticCredentials.password
+    ) {
+      router.push("/admin");
+    } else {
+      setError("Invalid email or password");
+    }
   };
 
   return (
