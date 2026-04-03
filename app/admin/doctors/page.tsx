@@ -16,6 +16,7 @@ export default function DoctorsManager() {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isLoading, setIsLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [pagination, setPagination] = useState({
         total_records: 0,
         current_page: 1,
@@ -79,9 +80,21 @@ export default function DoctorsManager() {
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Doctors Manager</h1>
                         <p className="text-slate-500 text-sm mt-1">Manage doctors and their clinical assignments.</p>
                     </div>
-                    <Link href="/admin/doctors/add" className="btn-primary !py-4 !px-8 shadow-xl shadow-teal-900/10">
+                    {/* <Link href="/admin/doctors/add" className="btn-primary !py-4 !px-8 shadow-xl shadow-teal-900/10">
                         <Plus className="w-4 h-4" /> Add New Doctor
-                    </Link>
+                    </Link> */}
+                    <Link
+    href="/admin/doctors/add"
+    onClick={() => setActionLoading("add")}
+    className="btn-primary !py-4 !px-8 shadow-xl shadow-teal-900/10"
+>
+    {actionLoading === "add" ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+    ) : (
+        <Plus className="w-4 h-4" />
+    )}
+    Add New Doctor
+</Link>
                 </div>
 
                 {/* Search & Filters */}
@@ -152,17 +165,25 @@ export default function DoctorsManager() {
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-4">
                                                     {doctor.profile_photo ? (
-    <img src={doctor.profile_photo} alt={doctor.full_name}
-                                                            className="w-12 h-12 rounded-2xl object-cover border border-slate-100 shadow-sm" />
+                                                    //  <img src={doctor.profile_photo} alt={doctor.full_name}
+                                                    //         className="w-12 h-12 rounded-2xl object-cover border border-slate-100 shadow-sm" />
+                                                    <img
+    src={doctor.profile_photo}
+    alt={doctor.full_name}
+    className="w-14 h-14 min-w-[56px] min-h-[56px] rounded-2xl object-cover border border-slate-100 shadow-sm flex-shrink-0"
+/>
                                                     ) : (
                                                         <div className="w-12 h-12 bg-white rounded-2xl border border-slate-100 flex items-center justify-center text-medical-teal group-hover:bg-medical-teal group-hover:text-white transition-all duration-300 shadow-sm">
                                                             <Stethoscope className="w-6 h-6" />
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <p className="text-sm font-bold text-slate-800">
+                                                        {/* <p className="text-sm font-bold text-slate-800">
                                                             {doctor.title} {doctor.full_name}
-                                                        </p>
+                                                        </p> */}
+                                                        <p className="text-sm font-bold text-slate-800 whitespace-nowrap">
+    {doctor.title} {doctor.full_name}
+</p>
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                                             {doctor.doctor_code} • {doctor.role?.replace(/_/g, " ")}
                                                         </p>
@@ -219,16 +240,30 @@ export default function DoctorsManager() {
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-2">
                                                     <Link href={`/admin/doctors/${doctor.id}`}
+                                                    onClick={() => setActionLoading(`view-${doctor.id}`)}
                                                         className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn">
-                                                        View <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+                                                        View {actionLoading === `view-${doctor.id}` ? (
+    <Loader2 className="w-3 h-3 animate-spin" />
+) : (
+    <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+)}
                                                     </Link>
                                                     <Link href={`/admin/doctors/add?id=${doctor.id}`}
+                                                    onClick={() => setActionLoading(`edit-${doctor.id}`)}
                                                         className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-blue-500 uppercase tracking-widest hover:bg-blue-50 hover:border-blue-200 transition-all">
+                                                        {actionLoading === `edit-${doctor.id}` && (
+    <Loader2 className="w-3 h-3 animate-spin" />
+)}    
                                                         Edit
                                                     </Link>
                                                     <Link href={`/admin/doctors/${doctor.id}/manage`}
+                                                    onClick={() => setActionLoading(`manage-${doctor.id}`)}
                                                         className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn">
-                                                        Manage <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                                        Manage {actionLoading === `manage-${doctor.id}` ? (
+    <Loader2 className="w-3 h-3 animate-spin" />
+) : (
+    <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+)}
                                                     </Link>
                                                 </div>
                                             </td>

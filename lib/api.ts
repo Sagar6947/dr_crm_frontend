@@ -88,10 +88,16 @@ export const geoService = {
     getCities: (stateId: string | number, signal?: AbortSignal) => {
         return request(`/city/${stateId}`, { signal });
     },
+    getClinicsByLocation: (state: string, city: string, signal?: AbortSignal) => {
+        return request(`/clinics-by-location/${encodeURIComponent(state)}/${encodeURIComponent(city)}`, { signal });
+    },
+    getDoctorsByClinic: (clinicId: string | number, signal?: AbortSignal) => {
+        return request(`/doctors-by-clinic/${clinicId}`, { signal });
+    },
 };
 
 export const patientService = {
-    // getAll: (signal?: AbortSignal) => request('/patient/list', { signal }),
+   
     getAll: (
   params: { page_no?: number; limit?: number; search?: string },
   signal?: AbortSignal
@@ -133,7 +139,7 @@ export const patientService = {
 };
 
 export const doctorService = {
-    // getAll: (signal?: AbortSignal) => request('/doctor/list', { signal }),
+   
     getAll: (params?: { page_no?: number; limit?: number; search?: string }, signal?: AbortSignal) => {
     const body = new URLSearchParams({
         page_no: String(params?.page_no || 1),
@@ -154,16 +160,9 @@ export const doctorService = {
             signal
         });
     },
-    // getById: (id: string, signal?: AbortSignal) => request(`/doctor/${id}`, { signal }),
+   
     getById: (id: string, signal?: AbortSignal) => request(`/doctor/detail/${id}`, { signal }),
-    // update: (id: string, formData: any, signal?: AbortSignal) => {
-    //     const params = new URLSearchParams(formData).toString();
-    //     return request(`/doctor/update/${id}`, {
-    //         method: 'PUT',
-    //         body: params,
-    //         signal
-    //     });
-    // }, 
+   
 
     update: (id: string, formData: any, signal?: AbortSignal) => {
     const isFormData = formData instanceof FormData;
@@ -242,4 +241,13 @@ export const appointmentService = {
         const today = new Date().toISOString().split('T')[0];
         return request(`/appointment/list?date=${today}`, { signal });
     },
+
+    book: (formData: any, signal?: AbortSignal) => {
+    const body = new URLSearchParams(formData).toString();
+    return request('/appointment/book', {
+        method: 'POST',
+        body,
+        signal
+    });
+},
 };

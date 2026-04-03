@@ -31,6 +31,7 @@ const ITEMS_PER_PAGE = 10;
 export default function PatientsManager() {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
@@ -107,9 +108,18 @@ export default function PatientsManager() {
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Patients Manager</h1>
                         <p className="text-slate-500 text-sm mt-1">Manage patient records and medical history.</p>
                     </div>
-                    <Link href="/admin/patients/add" className="btn-primary !py-4 !px-8 shadow-xl shadow-teal-900/10">
-                        <Plus className="w-4 h-4" /> Add New Patient
-                    </Link>
+                    <Link
+    href="/admin/patients/add"
+    onClick={() => setActionLoading("add")}
+    className="btn-primary !py-4 !px-8 shadow-xl shadow-teal-900/10"
+>
+    {actionLoading === "add" ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+    ) : (
+        <Plus className="w-4 h-4" />
+    )}
+    Add New Patient
+</Link>
                 </div>
 
                 {/* Search */}
@@ -217,15 +227,25 @@ export default function PatientsManager() {
                                                 <div className="flex items-center gap-2">
                                                     <Link
                                                         href={`/admin/patients/${patient.id}`}
+                                                        onClick={() => setActionLoading(`view-${patient.id}`)}
                                                         className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn"
                                                     >
-                                                        View <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+                                                        View {actionLoading === `view-${patient.id}` ? (
+    <Loader2 className="w-3 h-3 animate-spin" />
+) : (
+    <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+)}
                                                     </Link>
                                                     <Link
                                                         href={`/admin/patients/add?id=${patient.id}`}
+                                                        onClick={() => setActionLoading(`edit-${patient.id}`)}
                                                         className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn"
                                                     >
-                                                        Edit <Pencil className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+                                                        Edit {actionLoading === `edit-${patient.id}` ? (
+    <Loader2 className="w-3 h-3 animate-spin" />
+) : (
+    <Pencil className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+)}
                                                     </Link>
                                                 </div>
                                             </td>
