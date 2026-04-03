@@ -1,101 +1,121 @@
+
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { HeartPulse, Eye, EyeOff, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import Header from "@/components/Header";
 
 export default function LoginPage() {
-    const [showPassword, setShowPassword] = useState(false);
-    const [form, setForm] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState({ email: "", password: "" });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-    };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // handle login logic here
-    };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log(form);
+  };
 
-    return (
-        <main className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-slate-50 flex items-center justify-center px-4">
+  return (
+   
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-teal-50 p-4">
+      
+        <Header />
+     
+      {/* Login Card - Small box */}
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6">
+        
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center">
+            <HeartPulse className="text-white w-5 h-5" />
+          </div>
+          <span className="text-xl font-bold text-slate-900">Dr. CRM</span>
+        </div>
 
-            <div className="w-full max-w-md">
+        <h1 className="text-xl font-bold text-slate-900 text-center mb-1">Welcome Back</h1>
+        <p className="text-slate-400 text-xs text-center mb-6">Sign in to your account</p>
 
-                {/* LOGO */}
-                <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-11 h-11 bg-medical-teal rounded-xl flex items-center justify-center shadow-lg shadow-teal-100">
-                        <HeartPulse className="text-white w-6 h-6" />
-                    </div>
-                    <span className="text-2xl font-bold tracking-tight text-slate-900 uppercase">
-                        Dr. <span className="text-medical-teal">CRM</span>
-                    </span>
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* CARD */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
-                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Welcome back</h1>
-                    <p className="text-slate-500 text-sm mb-7">Sign in to your Dr. CRM account</p>
+          {/* EMAIL */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="you@clinic.com"
+              required
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
+            />
+          </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">Email</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={form.email}
-                                onChange={handleChange}
-                                required
-                                placeholder="you@clinic.com"
-                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
-                            />
-                        </div>
-
-                        <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide">Password</label>
-                                <Link href="/forgot-password" className="text-xs text-teal-600 hover:underline font-medium">
-                                    Forgot password?
-                                </Link>
-                            </div>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    name="password"
-                                    value={form.password}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="••••••••"
-                                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-400 transition pr-12"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm mt-2"
-                        >
-                            Sign In <ArrowRight className="w-4 h-4" />
-                        </button>
-                    </form>
-                </div>
-
-                {/* FOOTER */}
-                <p className="text-center text-slate-400 text-xs mt-6">
-                    Don&apos;t have an account?{" "}
-                    <Link href="/appointment" className="text-teal-600 font-semibold hover:underline">
-                        Book a Demo
-                    </Link>
-                </p>
-
+          {/* PASSWORD */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-xs font-medium text-slate-600">Password</label>
+              <Link href="/forgot-password" className="text-[10px] text-teal-600 hover:underline">
+                Forgot?
+              </Link>
             </div>
-        </main>
-    );
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                placeholder="••••••••"
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* REMEMBER ME */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+              <span className="text-xs text-slate-600">Remember me</span>
+            </label>
+          </div>
+
+          {/* SUBMIT */}
+          <button
+            type="submit"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all"
+          >
+            Sign In <ArrowRight className="w-4 h-4" />
+          </button>
+
+        </form>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-slate-400 mt-6">
+          Don't have an account?{" "}
+          <Link href="/appointment" className="text-teal-600 font-medium hover:underline">
+            Book a Demo
+          </Link>
+        </p>
+
+        {/* Trust badge */}
+        <p className="text-center text-[10px] text-slate-300 mt-4">
+          Secured by enterprise encryption
+        </p>
+      </div>
+    </main>
+  );
 }

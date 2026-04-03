@@ -16,6 +16,7 @@ import {
     Smartphone,
     MessageCircle,
     Database,
+    ClipboardClock,
     MonitorSmartphone,
     Users,
     Check,
@@ -93,7 +94,7 @@ export default function ClinicProfilePage() {
     }
 
     // Display helpers
-    const statusText = clinicData.status == "1" ? "Active" : "Inactive";
+    const statusText = clinicData.status;
     const addressLine1 = clinicData.address_line1 || "N/A";
     const addressLine2 = clinicData.address_line2 || "";
     const cityState = `${clinicData.city}, ${clinicData.state} - ${clinicData.pincode}`;
@@ -143,15 +144,15 @@ export default function ClinicProfilePage() {
                                         </span>
                                         <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                            Reg: {clinicData.registration_no || "UNREGISTERED"}
+                                            Reg: {clinicData.create_date || "N/A"}
                                         </span>
                                     </div>
                                 </div>
-                                <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${statusText === "Active"
+                                <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${statusText === "active"
                                     ? "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-lg shadow-emerald-900/5 ring-1 ring-emerald-400/20"
-                                    : "bg-slate-100 text-slate-500 border-slate-200"
+                                    : "bg-red-50 text-red-500 border-red-200"
                                     }`}>
-                                    <span className={`w-2 h-2 rounded-full ${statusText === "Active" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                                    <span className={`w-2 h-2 rounded-full ${statusText === "active" ? "bg-emerald-500 animate-pulse" : "bg-red-400"}`} />
                                     {statusText}
                                 </div>
                             </div>
@@ -159,9 +160,9 @@ export default function ClinicProfilePage() {
                             {/* Quick Stats Chips */}
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
                                 {[
-                                    { icon: Users, text: `${clinicData.max_doctors || 0} Doctors Capacity`, bg: "bg-teal-50/50", textCol: "text-teal-700" },
-                                    { icon: MonitorSmartphone, text: clinicData.online_protocol == "1" ? "Omni-Channel" : "Physical Only", bg: "bg-blue-50/50", textCol: "text-blue-700" },
-                                    { icon: Database, text: clinicData.inventory_independence == "1" ? "Independent Inventory" : "HQ Linked", bg: "bg-amber-50/50", textCol: "text-amber-700" }
+                                    { icon: Stethoscope, text: `${clinicData.max_doctors || 3} Doctors`, bg: "bg-teal-50/50", textCol: "text-teal-700" },
+                                    { icon: Users, text: clinicData.online_protocol == "1" ? "2 Patients" : "2 Patients", bg: "bg-blue-50/50", textCol: "text-blue-700" },
+                                    { icon: ClipboardClock, text: clinicData.inventory_independence == "1" ? "1 Appointment" : "2 Appointments", bg: "bg-amber-50/50", textCol: "text-amber-700" }
                                 ].map((stat, i) => (
                                     <div key={i} className={`px-4 py-2 rounded-[18px] border border-slate-100 ${stat.bg} flex items-center gap-2.5 shadow-sm transition-all hover:scale-105 cursor-default`}>
                                         <stat.icon className={`w-4 h-4 ${stat.textCol}`} />
@@ -173,9 +174,9 @@ export default function ClinicProfilePage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
                     {/* Location & Contact Details */}
-                    <div className="lg:col-span-2 space-y-8">
+                    <div className=" space-y-8">
                         {/* Address Card */}
                         <div className="medical-card !p-0 !rounded-[40px] border-slate-100/50 shadow-2xl shadow-slate-200/50 overflow-hidden">
                             <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
@@ -217,7 +218,7 @@ export default function ClinicProfilePage() {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-slate-800">{clinicData.primary_phone || "N/A"}</p>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Primary Line</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Primary Number</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-blue-100 transition-colors shadow-sm">
@@ -226,7 +227,7 @@ export default function ClinicProfilePage() {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-slate-800">{clinicData.alternate_phone || "UNSET"}</p>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Backup Uplink</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Alternate Number</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -251,7 +252,7 @@ export default function ClinicProfilePage() {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-slate-800">{clinicData.email || "N/A"}</p>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Global Dispatch</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Email</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -272,7 +273,7 @@ export default function ClinicProfilePage() {
                                     </h3>
                                 </div>
                             </div>
-                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div className="p-8 grid grid-cols-1 gap-10">
                                 {/* Hours */}
                                 <div className="bg-slate-50/50 p-6 rounded-[32px] border border-slate-100">
                                     <h4 className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -281,10 +282,10 @@ export default function ClinicProfilePage() {
                                     </h4>
                                     <div className="space-y-4">
                                         {[
-                                            { label: "Operating Days", val: clinicData.operating_days || "N/A", col: "text-slate-900" },
-                                            { label: "Opening Cycle", val: clinicData.opening_time || "N/A", col: "text-emerald-600" },
-                                            { label: "Closing Cycle", val: clinicData.closing_time || "N/A", col: "text-rose-500" },
-                                            { label: "Break Interval", val: clinicData.break_time || "N/A", col: "text-amber-600" }
+                                            { label: "Operating Days", val: clinicData.working_days || "N/A", col: "text-slate-900" },
+                                            { label: "Opening Time", val: clinicData.open_time || "N/A", col: "text-emerald-600" },
+                                            { label: "Closing Time", val: clinicData.close_time || "N/A", col: "text-rose-500" },
+                                            { label: "Break Time", val: clinicData.break_start + ' - ' + clinicData.break_end || "N/A", col: "text-amber-600" }
                                         ].map((row, i) => (
                                             <div key={i} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{row.label}</span>
@@ -293,81 +294,11 @@ export default function ClinicProfilePage() {
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* Appointment Rules */}
-                                <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/20">
-                                    <h4 className="text-[10px] font-black text-slate-400 mb-6 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <CalendarCheck className="w-4 h-4 text-emerald-500" />
-                                        Protocol Constraints
-                                    </h4>
-                                    <div className="space-y-4">
-                                        {[
-                                            { label: "Slot Duration", val: `${clinicData.slot_duration} Mins` },
-                                            { label: "Max Throughput", val: `${clinicData.max_patients} Patients` },
-                                            { label: "Unit Capacity", val: `${clinicData.max_doctors} Doctors` }
-                                        ].map((row, i) => (
-                                            <div key={i} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0 text-sm">
-                                                <span className="text-slate-500 font-medium">{row.label}</span>
-                                                <span className="font-black text-slate-800 tracking-tight">{row.val}</span>
-                                            </div>
-                                        ))}
-                                        <div className="flex gap-2 pt-4">
-                                            {clinicData.online_protocol == "1" && (
-                                                <span className="px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[9px] font-black uppercase tracking-widest">
-                                                    Online Protocol: ACTIVE
-                                                </span>
-                                            )}
-                                            {clinicData.offline_protocol == "1" && (
-                                                <span className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl text-[9px] font-black uppercase tracking-widest">
-                                                    Offline Protocol: ACTIVE
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* System & Independence Settings */}
-                    <div className="space-y-8">
-                        <div className="medical-card !p-0 !rounded-[40px] border-slate-100/50 shadow-2xl shadow-slate-200/50 overflow-hidden h-full">
-                            <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center gap-3">
-                                <div className="p-2.5 bg-indigo-500/10 rounded-[14px] text-indigo-600 shadow-inner">
-                                    <Server className="w-5 h-5" />
-                                </div>
-                                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">
-                                    Autonomy Protocols
-                                </h3>
-                            </div>
-                            <div className="p-8 space-y-6">
-                                {[
-                                    { key: "Inventory Management", status: clinicData.inventory_independence == "1", desc: "Stock is managed separately from HQ." },
-                                    { key: "Billing Independence", status: clinicData.billing_independence == "1", desc: "Generates unique invoice sequence." },
-                                    { key: "Report Autonomy", status: clinicData.report_independence == "1", desc: "Patient records are specific to this branch." }
-                                ].map((config, i) => (
-                                    <div key={i} className={`flex items-start gap-4 p-4 rounded-3xl border transition-colors group ${config.status ? "bg-emerald-50/30 border-emerald-100" : "bg-slate-50/50 border-slate-100"}`}>
-                                        <div className={`p-2 rounded-xl mt-0.5 shadow-sm group-hover:scale-110 transition-transform ${config.status ? "bg-emerald-100 text-emerald-600" : "bg-slate-200 text-slate-400"}`}>
-                                            <Check className="w-3.5 h-3.5" />
-                                        </div>
-                                        <div>
-                                            <p className={`text-sm font-black tracking-tight leading-tight uppercase ${config.status ? "text-emerald-700" : "text-slate-500"}`}>
-                                                {config.key}
-                                            </p>
-                                            <p className="text-[10px] font-bold text-slate-400 mt-1">
-                                                {config.desc}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="px-8 py-6 border-t border-slate-50 bg-slate-50/20 text-center">
-                                <button className="text-[10px] font-black text-medical-teal uppercase tracking-[0.2em] hover:tracking-[0.3em] transition-all flex items-center justify-center gap-2 mx-auto">
-                                    Reconfigure Protocol <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                  
                 </div>
             </div>
         </AdminLayout>

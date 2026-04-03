@@ -1,41 +1,50 @@
+
+
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
     Hospital,
     MapPin,
     Phone,
     Clock,
-    Settings,
     Upload,
-    X,
-    Check,
     ChevronRight,
     ArrowLeft,
     Building2,
     Save,
     Trash2,
-    Plus
+    Plus,
+    Loader2
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { clinicService, geoService } from "@/lib/api";
 import { toast } from "sonner";
 
-export default function AddClinicPage() {
-
+function AddClinicForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Agar ?id=xxx hai to edit mode, warna add mode
+    const clinicId = searchParams.get("id");
+    const isEditMode = !!clinicId;
+
     const [logo, setLogo] = useState<string | null>(null);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [states, setStates] = useState<{ id: string; state_name: string }[]>([]);
     const [cities, setCities] = useState<{ city_id: string; city_name: string }[]>([]);
     const [isLoadingStates, setIsLoadingStates] = useState(false);
     const [isLoadingCities, setIsLoadingCities] = useState(false);
+    const [selectedStateId, setSelectedStateId] = useState<string>("");
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
+    const abortCitiesRef = useRef<AbortController | null>(null);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -62,10 +71,9 @@ export default function AddClinicPage() {
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setLogoFile(file);
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setLogo(reader.result as string);
-            };
+            reader.onloadend = () => setLogo(reader.result as string);
             reader.readAsDataURL(file);
         }
     };
@@ -79,7 +87,7 @@ export default function AddClinicPage() {
         }));
     };
 
-    // Load states on mount
+    // Step 1: Load states
     useEffect(() => {
         const controller = new AbortController();
         const fetchStates = async () => {
@@ -95,26 +103,95 @@ export default function AddClinicPage() {
             }
         };
         fetchStates();
-
-        return () => {
-            controller.abort();
-        };
+        return () => controller.abort();
     }, []);
 
-    // Load cities when state changes
-    const abortCitiesRef = useRef<AbortController | null>(null);
+    // Step 2: Agar edit mode hai to states load hone ke baad clinic data fetch karo
+    useEffect(() => {
+        if (!isEditMode || !clinicId || states.length === 0) return;
+
+        const controller = new AbortController();
+
+        const fetchClinic = async () => {
+            setIsLoadingData(true);
+            try {
+                const response = await clinicService.getById(clinicId, controller.signal);
+                if (response.status === 200) {
+                    const c = response.data;
+
+                    // if (c.logo) setLogo(c.logo);
+                    if (c.logo_path) setLogo(c.logo_path);
+
+                    const workingDaysArray = c.working_days
+                        ? c.working_days.split(",").map((d: string) => d.trim())
+                        : ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+                    setFormData({
+                        name: c.name || "",
+                        reg_number: c.reg_number || "",
+                        status: c.status?.toLowerCase() || "active",
+                        address_line1: c.address_line1 || "",
+                        address_line2: c.address_line2 || "",
+                        city: c.city || "",
+                        state: c.state || "",
+                        pincode: c.pincode || "",
+                        country: c.country || "India",
+                        map_link: c.map_link || "",
+                        primary_phone: c.primary_phone || "",
+                        alternate_phone: c.alternate_phone || "",
+                        email: c.email || "",
+                        whatsapp_number: c.whatsapp_number || "",
+                        working_days: workingDaysArray,
+                        open_time: c.open_time || "09:00",
+                        close_time: c.close_time || "18:00",
+                        break_start: c.break_start || "13:00",
+                        break_end: c.break_end || "14:00",
+                    });
+
+                    // State dropdown match karo
+                    if (c.state) {
+                        const matchedState = states.find(
+                            s => s.state_name.toLowerCase() === c.state.toLowerCase()
+                        );
+                        if (matchedState) {
+                            setSelectedStateId(String(matchedState.id));
+                            // Us state ki cities load karo
+                            setIsLoadingCities(true);
+                            try {
+                                const cityRes = await geoService.getCities(String(matchedState.id), controller.signal);
+                                setCities(cityRes.data || []);
+                            } catch (err: any) {
+                                if (err.name !== 'AbortError') console.error("Failed to fetch cities:", err);
+                            } finally {
+                                setIsLoadingCities(false);
+                            }
+                        }
+                    }
+                } else {
+                    toast.error(response.message || "Failed to load clinic data");
+                    router.push("/admin/clinics");
+                }
+            } catch (error: any) {
+                if (error.name === 'AbortError') return;
+                toast.error("Failed to load clinic data");
+                router.push("/admin/clinics");
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+
+        fetchClinic();
+        return () => controller.abort();
+    }, [isEditMode, clinicId, states]);
+
     const handleStateChange = async (stateId: string) => {
         if (abortCitiesRef.current) abortCitiesRef.current.abort();
         const controller = new AbortController();
         abortCitiesRef.current = controller;
 
         const selectedState = states.find(s => String(s.id) === String(stateId));
-
-        setFormData(prev => ({
-            ...prev,
-            state: selectedState ? selectedState.state_name : "",
-            city: ""
-        }));
+        setSelectedStateId(stateId);
+        setFormData(prev => ({ ...prev, state: selectedState ? selectedState.state_name : "", city: "" }));
         setCities([]);
 
         if (stateId) {
@@ -124,11 +201,8 @@ export default function AddClinicPage() {
                 setCities(response.data || []);
             } catch (error: any) {
                 if (error.name === 'AbortError') return;
-                console.error("Failed to fetch cities:", error);
             } finally {
-                if (abortCitiesRef.current === controller) {
-                    setIsLoadingCities(false);
-                }
+                if (abortCitiesRef.current === controller) setIsLoadingCities(false);
             }
         }
     };
@@ -147,8 +221,24 @@ export default function AddClinicPage() {
         setErrors({});
 
         try {
-            await clinicService.add(formData);
-            toast.success("Clinic created successfully!");
+            const submitData = new FormData();
+            Object.entries(formData).forEach(([key, value]) => {
+                if (key === 'working_days') {
+                    submitData.append(key, (value as string[]).join(','));
+                } else {
+                    submitData.append(key, value as string);
+                }
+            });
+            if (logoFile) submitData.append('logo', logoFile);
+
+            if (isEditMode) {
+                await clinicService.update(clinicId!, submitData);
+                toast.success("Clinic updated successfully!");
+            } else {
+                await clinicService.add(submitData);
+                toast.success("Clinic created successfully!");
+            }
+
             router.push("/admin/clinics");
         } catch (error: any) {
             if (error.status === 400 && typeof error.message === 'object') {
@@ -157,7 +247,6 @@ export default function AddClinicPage() {
                 scrollToError(error.message);
             } else if (error.message) {
                 toast.error(error.message);
-                // If it's a field-specific error from our custom duplicate check
                 if (error.message.includes("Name")) scrollToError({ name: true });
                 else if (error.message.includes("Phone")) scrollToError({ primary_phone: true });
                 else if (error.message.includes("Email")) scrollToError({ email: true });
@@ -169,6 +258,21 @@ export default function AddClinicPage() {
         }
     };
 
+    if (isLoadingData) {
+        return (
+            <AdminLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <div className="w-16 h-16 bg-teal-50 rounded-[28px] flex items-center justify-center text-medical-teal animate-bounce">
+                        <Hospital className="w-8 h-8" />
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Loading clinic data...
+                    </div>
+                </div>
+            </AdminLayout>
+        );
+    }
+
     return (
         <AdminLayout>
             <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
@@ -179,12 +283,18 @@ export default function AddClinicPage() {
                             <ArrowLeft className="w-3 h-3" /> Clinics Manager
                         </Link>
                         <ChevronRight className="w-3 h-3" />
-                        <span className="text-slate-900">Create New Clinic</span>
+                        <span className="text-slate-900">{isEditMode ? "Edit Clinic" : "Create New Clinic"}</span>
                     </div>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">New Clinic</h1>
-                            <p className="text-slate-500 text-sm mt-1">Configure global medical facility parameters.</p>
+                            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
+                                {isEditMode ? "Edit Clinic" : "New Clinic"}
+                            </h1>
+                            <p className="text-slate-500 text-sm mt-1">
+                                {isEditMode
+                                    ? `Modifying parameters for ${formData.name || "clinic"}`
+                                    : "Configure global medical facility parameters."}
+                            </p>
                         </div>
                         <div className="flex gap-3">
                             <Link href="/admin/clinics" className="btn-secondary !py-3 !px-6 !text-[10px] font-black tracking-widest">
@@ -193,9 +303,15 @@ export default function AddClinicPage() {
                             <button
                                 onClick={handleSubmit}
                                 disabled={isSubmitting}
-                                className="btn-primary !py-3 !px-8 !text-[10px] font-black tracking-widest shadow-xl shadow-teal-900/10 disabled:opacity-50 cursor-pointer"
+                                className="btn-primary !py-3 !px-8 !text-[10px] font-black tracking-widest shadow-xl shadow-teal-900/10 disabled:opacity-50 cursor-pointer flex items-center gap-2"
                             >
-                                {isSubmitting ? "Initializing..." : <><Plus className="w-4 h-4" /> Create</>}
+                                {isSubmitting ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> {isEditMode ? "Saving..." : "Initializing..."}</>
+                                ) : isEditMode ? (
+                                    <><Save className="w-4 h-4" /> Save Changes</>
+                                ) : (
+                                    <><Plus className="w-4 h-4" /> Create</>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -215,7 +331,6 @@ export default function AddClinicPage() {
                         </div>
 
                         <div className="flex flex-col md:flex-row gap-10">
-                            {/* Logo Upload */}
                             <div className="flex-shrink-0">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-4">Clinic Logo</label>
                                 <div
@@ -226,7 +341,7 @@ export default function AddClinicPage() {
                                         <>
                                             <img src={logo} alt="Preview" className="w-full h-full object-cover rounded-[22px]" />
                                             <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-[22px]">
-                                                <Trash2 className="text-white w-6 h-6" onClick={(e) => { e.stopPropagation(); setLogo(null); }} />
+                                                <Trash2 className="text-white w-6 h-6" onClick={(e) => { e.stopPropagation(); setLogo(null); setLogoFile(null); }} />
                                             </div>
                                         </>
                                     ) : (
@@ -235,13 +350,7 @@ export default function AddClinicPage() {
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload</span>
                                         </div>
                                     )}
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={handleLogoUpload}
-                                    />
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                                 </div>
                             </div>
 
@@ -259,7 +368,7 @@ export default function AddClinicPage() {
                                     />
                                     {errors.name && <p className="text-rose-500 text-[10px] font-bold mt-1 uppercase">{errors.name}</p>}
                                 </div>
-                                <div className="md:col-span-2">
+                                <div>
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Registration Number</label>
                                     <input
                                         ref={(el) => { fieldRefs.current["reg_number"] = el; }}
@@ -271,6 +380,20 @@ export default function AddClinicPage() {
                                         disabled={isSubmitting}
                                     />
                                 </div>
+                                {isEditMode && (
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Status</label>
+                                        <select
+                                            className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium appearance-none"
+                                            value={formData.status}
+                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                            disabled={isSubmitting}
+                                        >
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -318,15 +441,13 @@ export default function AddClinicPage() {
                                 <select
                                     ref={(el: any) => { fieldRefs.current["state"] = el; }}
                                     className={`w-full bg-slate-50 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium appearance-none ${errors.state ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-100'}`}
-                                    value={states.find(s => s.state_name === formData.state)?.id || ""}
+                                    value={selectedStateId}
                                     onChange={(e) => handleStateChange(e.target.value)}
                                     disabled={isSubmitting || isLoadingStates}
                                 >
                                     <option value="">{isLoadingStates ? "Loading..." : "Select State"}</option>
                                     {states.map((state) => (
-                                        <option key={state.id} value={state.id}>
-                                            {state.state_name}
-                                        </option>
+                                        <option key={state.id} value={state.id}>{state.state_name}</option>
                                     ))}
                                 </select>
                                 {errors.state && <p className="text-rose-500 text-[10px] font-bold mt-1 uppercase">{errors.state}</p>}
@@ -342,9 +463,7 @@ export default function AddClinicPage() {
                                 >
                                     <option value="">{isLoadingCities ? "Loading..." : formData.state ? "Select City" : "Select State First"}</option>
                                     {cities.map((city) => (
-                                        <option key={city.city_id} value={city.city_name}>
-                                            {city.city_name}
-                                        </option>
+                                        <option key={city.city_id} value={city.city_name}>{city.city_name}</option>
                                     ))}
                                 </select>
                                 {errors.city && <p className="text-rose-500 text-[10px] font-bold mt-1 uppercase">{errors.city}</p>}
@@ -488,43 +607,19 @@ export default function AddClinicPage() {
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 pt-4">
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Opening Time</label>
-                                    <input
-                                        type="time"
-                                        className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium"
-                                        value={formData.open_time}
-                                        onChange={(e) => setFormData({ ...formData, open_time: e.target.value })}
-                                        disabled={isSubmitting}
-                                    />
+                                    <input type="time" className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium" value={formData.open_time} onChange={(e) => setFormData({ ...formData, open_time: e.target.value })} disabled={isSubmitting} />
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Closing Time</label>
-                                    <input
-                                        type="time"
-                                        className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium"
-                                        value={formData.close_time}
-                                        onChange={(e) => setFormData({ ...formData, close_time: e.target.value })}
-                                        disabled={isSubmitting}
-                                    />
+                                    <input type="time" className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium" value={formData.close_time} onChange={(e) => setFormData({ ...formData, close_time: e.target.value })} disabled={isSubmitting} />
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Break Interval Start</label>
-                                    <input
-                                        type="time"
-                                        className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium"
-                                        value={formData.break_start}
-                                        onChange={(e) => setFormData({ ...formData, break_start: e.target.value })}
-                                        disabled={isSubmitting}
-                                    />
+                                    <input type="time" className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium" value={formData.break_start} onChange={(e) => setFormData({ ...formData, break_start: e.target.value })} disabled={isSubmitting} />
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Break Interval End</label>
-                                    <input
-                                        type="time"
-                                        className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium"
-                                        value={formData.break_end}
-                                        onChange={(e) => setFormData({ ...formData, break_end: e.target.value })}
-                                        disabled={isSubmitting}
-                                    />
+                                    <input type="time" className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium" value={formData.break_end} onChange={(e) => setFormData({ ...formData, break_end: e.target.value })} disabled={isSubmitting} />
                                 </div>
                             </div>
                         </div>
@@ -537,13 +632,39 @@ export default function AddClinicPage() {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="btn-primary !py-4 !px-12 !text-[11px] font-black tracking-widest !rounded-2xl shadow-xl shadow-teal-900/10 ring-2 ring-medical-teal ring-offset-4 ring-offset-white disabled:opacity-50 cursor-pointer"
+                            className="btn-primary !py-4 !px-12 !text-[11px] font-black tracking-widest !rounded-2xl shadow-xl shadow-teal-900/10 ring-2 ring-medical-teal ring-offset-4 ring-offset-white disabled:opacity-50 cursor-pointer flex items-center gap-2"
                         >
-                            {isSubmitting ? "Initializing..." : <><Plus className="w-5 h-5" /> Create</>}
+                            {isSubmitting ? (
+                                <><Loader2 className="w-5 h-5 animate-spin" /> {isEditMode ? "Saving..." : "Initializing..."}</>
+                            ) : isEditMode ? (
+                                <><Save className="w-5 h-5" /> Save Changes</>
+                            ) : (
+                                <><Plus className="w-5 h-5" /> Create</>
+                            )}
                         </button>
                     </div>
                 </form>
             </div>
         </AdminLayout>
+    );
+}
+
+// useSearchParams ke liye Suspense wrap zaruri hai Next.js me
+export default function AddClinicPage() {
+    return (
+        <Suspense fallback={
+            <AdminLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <div className="w-16 h-16 bg-teal-50 rounded-[28px] flex items-center justify-center text-medical-teal animate-bounce">
+                        <Hospital className="w-8 h-8" />
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Loading...
+                    </div>
+                </div>
+            </AdminLayout>
+        }>
+            <AddClinicForm />
+        </Suspense>
     );
 }

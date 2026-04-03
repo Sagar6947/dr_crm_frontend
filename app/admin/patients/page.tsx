@@ -1,53 +1,103 @@
+
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
-    User,
-    MapPin,
-    Phone,
-    Plus,
-    Search,
-    ChevronLeft,
-    ChevronRight,
-    Filter,
-    Download,
-    ExternalLink,
-    Eye,
-    HeartPulse,
+    User, MapPin, Phone, Plus, Search, ChevronLeft, ChevronRight,
+    Filter, Download, Eye, Pencil, HeartPulse, Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
+
 interface Patient {
-    id: string;
-    name: string;
-    patientCode: string;
+    id: number;
+    full_name: string;
     age: number;
-    gender: "Male" | "Female" | "Other";
+    gender: string;
     phone: string;
-    location: string;
+    email: string;
+    state: string;
+    city: string;
+    address: string;
     disease: string;
-    status: "Active" | "Inactive";
-    registeredOn: string;
+    blood_group: string;
+    status: string;
+    create_date: string;
 }
 
-const INITIAL_PATIENTS: Patient[] = [
-    { id: "1", name: "Rahul Sharma", patientCode: "PT-001", age: 34, gender: "Male", phone: "+91 98765 43210", location: "Bhopal, MP", disease: "Diabetes", status: "Active", registeredOn: "12 Jan 2024" },
-    { id: "2", name: "Priya Verma", patientCode: "PT-002", age: 27, gender: "Female", phone: "+91 91234 56789", location: "Indore, MP", disease: "Hypertension", status: "Active", registeredOn: "05 Feb 2024" },
-    { id: "3", name: "Amit Patel", patientCode: "PT-003", age: 45, gender: "Male", phone: "+91 99887 76655", location: "Bhopal, MP", disease: "Arthritis", status: "Inactive", registeredOn: "20 Mar 2024" },
-    { id: "4", name: "Sunita Joshi", patientCode: "PT-004", age: 52, gender: "Female", phone: "+91 87654 32109", location: "Jabalpur, MP", disease: "Thyroid", status: "Active", registeredOn: "01 Apr 2024" },
-];
+const ITEMS_PER_PAGE = 10;
 
 export default function PatientsManager() {
-    const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
 
-    const filteredPatients = patients.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.patientCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.disease.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // const fetchPatients = async () => {
+    //     setLoading(true);
+    //     try {
+    //         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient/list`, {
+    //             method: "POST",
+    //             headers: { "Content-Type": "application/json" },
+    //             body: JSON.stringify({
+    //                 page_no: currentPage,
+    //                 limit: ITEMS_PER_PAGE,
+    //                 search: searchQuery,
+    //             }),
+    //         });
+    //         const data = await res.json();
+    //         const list = Array.isArray(data?.data) ? data.data : [];
+    //         setPatients(list);
+    //         setTotalItems(data?.total || list.length);
+    //     } catch (err) {
+    //         console.error("Failed to fetch patients", err);
+    //         setPatients([]);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // }; 
+
+    const fetchPatients = async () => {
+    setLoading(true);
+
+    try {
+        const formData = new FormData();
+        formData.append("page_no", String(currentPage));
+        formData.append("limit", String(ITEMS_PER_PAGE));
+        formData.append("search", searchQuery);
+
+        const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/patient/list`,
+            {
+                method: "POST",
+                body: formData,
+            }
+        );
+
+        const data = await res.json();
+
+        console.log("PATIENT LIST RESPONSE =>", data);
+
+        const list = Array.isArray(data?.data) ? data.data : [];
+
+        setPatients(list);
+        setTotalItems(data?.total || list.length);
+    } catch (err) {
+        console.error("Failed to fetch patients", err);
+        setPatients([]);
+    } finally {
+        setLoading(false);
+    }
+};
+
+    useEffect(() => {
+        fetchPatients();
+    }, [currentPage, searchQuery]);
+
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
     return (
         <AdminLayout>
@@ -59,23 +109,29 @@ export default function PatientsManager() {
                         <p className="text-slate-500 text-sm mt-1">Manage patient records and medical history.</p>
                     </div>
                     <Link
-                        href="/admin/patients/add"
-                        className="btn-primary !py-4 !px-8 shadow-xl shadow-teal-900/10"
-                    >
-                        <Plus className="w-4 h-4" /> Add New Patient
-                    </Link>
+    href="/admin/patients/add"
+    onClick={() => setActionLoading("add")}
+    className="btn-primary !py-4 !px-8 shadow-xl shadow-teal-900/10"
+>
+    {actionLoading === "add" ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+    ) : (
+        <Plus className="w-4 h-4" />
+    )}
+    Add New Patient
+</Link>
                 </div>
 
-                {/* Filters & Search */}
+                {/* Search */}
                 <div className="medical-card !p-4 !rounded-3xl flex flex-col md:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
                         <input
                             type="text"
-                            placeholder="Search patients by name, code, location or disease..."
+                            placeholder="Search patients by name, disease, city..."
                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-medical-teal/20 outline-none"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                         />
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
@@ -88,103 +144,136 @@ export default function PatientsManager() {
                     </div>
                 </div>
 
-                {/* Table View */}
+                {/* Table */}
                 <div className="medical-card !p-0 !rounded-[40px] overflow-hidden border-slate-100/50 shadow-2xl shadow-slate-200/50">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50/50 border-b border-slate-50">
-                                    <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Patient Name</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Patient</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Contact</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Disease</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Blood Group</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                                    <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Registered On</th>
-                                    <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Action</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {filteredPatients.map((patient) => (
-                                    <tr key={patient.id} className="group hover:bg-slate-50/30 transition-colors">
-                                        {/* Patient Name */}
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-white rounded-2xl border border-slate-100 flex items-center justify-center text-medical-teal group-hover:bg-medical-teal group-hover:text-white transition-all duration-300 shadow-sm">
-                                                    <User className="w-6 h-6" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-slate-800">{patient.name}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                        {patient.patientCode} • {patient.age} yrs • {patient.gender}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        {/* Contact */}
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2 text-slate-500 mb-1">
-                                                <Phone className="w-3.5 h-3.5" />
-                                                <span className="text-sm font-medium">{patient.phone}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-slate-400">
-                                                <MapPin className="w-3.5 h-3.5" />
-                                                <span className="text-xs">{patient.location}</span>
-                                            </div>
-                                        </td>
-
-                                        {/* Disease */}
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2">
-                                                <HeartPulse className="w-4 h-4 text-rose-400" />
-                                                <span className="text-sm font-medium text-slate-700">{patient.disease}</span>
-                                            </div>
-                                        </td>
-
-                                        {/* Status */}
-                                        <td className="px-8 py-6">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${patient.status === "Active"
-                                                ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                                : "bg-slate-100 text-slate-500 border-slate-200"
-                                                }`}>
-                                                <div className={`w-1.5 h-1.5 rounded-full mr-2 ${patient.status === "Active" ? "bg-emerald-500" : "bg-slate-400"}`} />
-                                                {patient.status}
-                                            </span>
-                                        </td>
-
-                                        {/* Registered On */}
-                                        <td className="px-8 py-6 text-sm font-medium text-slate-600">{patient.registeredOn}</td>
-
-                                        {/* Actions */}
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2">
-                                                <Link
-                                                    href={`/admin/patients/${patient.id}`}
-                                                    className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn"
-                                                >
-                                                    View <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
-                                                </Link>
-                                                <Link
-                                                    href={`/admin/patients/${patient.id}/manage`}
-                                                    className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn"
-                                                >
-                                                    Manage <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                                                </Link>
-                                            </div>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-8 py-16 text-center">
+                                            <Loader2 className="w-6 h-6 animate-spin text-medical-teal mx-auto" />
                                         </td>
                                     </tr>
-                                ))}
+                                ) : patients.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-8 py-16 text-center text-slate-400 text-sm">
+                                            No patients found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    patients.map((patient) => (
+                                        <tr key={patient.id} className="group hover:bg-slate-50/30 transition-colors">
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-white rounded-2xl border border-slate-100 flex items-center justify-center text-medical-teal group-hover:bg-medical-teal group-hover:text-white transition-all duration-300 shadow-sm">
+                                                        <User className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-800">{patient.full_name}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                            {patient.age} yrs • {patient.gender}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-2 text-slate-500 mb-1">
+                                                    <Phone className="w-3.5 h-3.5" />
+                                                    <span className="text-sm font-medium">{patient.phone}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-400">
+                                                    <MapPin className="w-3.5 h-3.5" />
+                                                    <span className="text-xs">{patient.city}{patient.state ? `, ${patient.state}` : ""}</span>
+                                                </div>
+                                            </td>
+
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-2">
+                                                    <HeartPulse className="w-4 h-4 text-rose-400" />
+                                                    <span className="text-sm font-medium text-slate-700">{patient.disease || "—"}</span>
+                                                </div>
+                                            </td>
+
+                                            <td className="px-8 py-6">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-500 border border-rose-100">
+                                                    {patient.blood_group || "—"}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-8 py-6">
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                                                    patient.status === "active"
+                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                                        : "bg-slate-100 text-slate-500 border-slate-200"
+                                                }`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full mr-2 ${patient.status === "active" ? "bg-emerald-500" : "bg-slate-400"}`} />
+                                                    {patient.status}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-2">
+                                                    <Link
+                                                        href={`/admin/patients/${patient.id}`}
+                                                        onClick={() => setActionLoading(`view-${patient.id}`)}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn"
+                                                    >
+                                                        View {actionLoading === `view-${patient.id}` ? (
+    <Loader2 className="w-3 h-3 animate-spin" />
+) : (
+    <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+)}
+                                                    </Link>
+                                                    <Link
+                                                        href={`/admin/patients/add?id=${patient.id}`}
+                                                        onClick={() => setActionLoading(`edit-${patient.id}`)}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:border-medical-teal hover:text-medical-teal hover:bg-teal-50/30 transition-all group/btn"
+                                                    >
+                                                        Edit {actionLoading === `edit-${patient.id}` ? (
+    <Loader2 className="w-3 h-3 animate-spin" />
+) : (
+    <Pencil className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
+)}
+                                                    </Link>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
 
                     {/* Pagination */}
                     <div className="px-8 py-6 bg-slate-50/50 flex justify-between items-center">
-                        <p className="text-xs font-bold text-slate-400">Showing {filteredPatients.length} of {patients.length} patients</p>
+                        <p className="text-xs font-bold text-slate-400">
+                            Showing {patients.length} of {totalItems} patients
+                        </p>
                         <div className="flex gap-2">
-                            <button className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors disabled:opacity-50" disabled>
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors disabled:opacity-50"
+                            >
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
-                            <button className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors">
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={currentPage >= totalPages}
+                                className="p-2 border border-slate-200 rounded-xl text-slate-400 hover:bg-white transition-colors disabled:opacity-50"
+                            >
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
