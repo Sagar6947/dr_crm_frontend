@@ -23,10 +23,9 @@ import {
     AlertCircle,
     Loader2,
 } from "lucide-react";
-// import { clinicService, geoService } from "@/lib/api";
 import { clinicService, geoService, appointmentService } from "@/lib/api";
 
-// --- MOCK DATA (only TIME_SLOTS remain) ---
+// --- MOCK DATA ---
 const TIME_SLOTS = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
 
 // --- TYPES ---
@@ -98,50 +97,37 @@ export default function AppointmentWizard() {
     const next = () => setCurrentStep((prev) => prev + 1);
     const back = () => setCurrentStep((prev) => prev - 1);
 
-    // const handleSubmit = (e: React.FormEvent) => {
-    //     e.preventDefault();
-    //     if (currentStep < 6) {
-    //         if (currentStep === 5 && !formData.appointmentId) {
-    //             updateFields({ appointmentId: generateAppointmentId() });
-    //         }
-    //         next();
-    //     } else {
-    //         setIsSubmitted(true);
-    //     }
-    // }; 
-
     const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (currentStep < 6) {
-        if (currentStep === 5 && !formData.appointmentId) {
-            updateFields({ appointmentId: generateAppointmentId() });
-        }
-        next();
-    } else {
-        // Final submit
-        const payload = {
-            booking_name: formData.fullName,
-            phone: formData.phone,
-            clinic_id: formData.clinicId,
-            doctor_id: formData.doctorId,
-            state: formData.stateName,
-            city: formData.city,
-            appointment_date: formData.date,
-            appointment_time: formData.time,
-            consultation_mode: formData.consultationMode,
-            chronic_condition: formData.conditions || "None",
-            regular_medications: formData.medications || "None",
-            payment_mode: formData.paymentMethod === "cash" ? "pay_at_visit" : "qr_payment",
-        };
+        e.preventDefault();
+        if (currentStep < 6) {
+            if (currentStep === 5 && !formData.appointmentId) {
+                updateFields({ appointmentId: generateAppointmentId() });
+            }
+            next();
+        } else {
+            // Final submit
+            const payload = {
+                booking_name: formData.fullName,
+                phone: formData.phone,
+                clinic_id: formData.clinicId,
+                doctor_id: formData.doctorId,
+                state: formData.stateName,
+                city: formData.city,
+                appointment_date: formData.date,
+                appointment_time: formData.time,
+                consultation_mode: formData.consultationMode,
+                chronic_condition: formData.conditions || "None",
+                regular_medications: formData.medications || "None",
+                payment_mode: formData.paymentMethod === "cash" ? "pay_at_visit" : "qr_payment",
+            };
 
-        appointmentService.book(payload)
-            .then(() => setIsSubmitted(true))
-            .catch((err) => {
-                console.error(err);
-                // optional: toast.error(err.message || "Booking failed");
-            });
-    }
-};
+            appointmentService.book(payload)
+                .then(() => setIsSubmitted(true))
+                .catch((err) => {
+                    console.error(err);
+                });
+        }
+    };
 
     if (isSubmitted) {
         return <SuccessCard formData={formData} />;
@@ -177,11 +163,15 @@ export default function AppointmentWizard() {
                     <form onSubmit={handleSubmit} className="space-y-10">
                         {currentStep === 0 && <Step0 formData={formData} updateFields={updateFields} generatePatientId={generatePatientId} />}
                         {currentStep === 1 && <Step1 formData={formData} updateFields={updateFields} />}
-                        {currentStep === 2 && <Step2 formData={formData} updateFields={updateFields} />}
-                        {currentStep === 3 && <Step3 formData={formData} updateFields={updateFields} />}
-                        {currentStep === 4 && <Step4 formData={formData} updateFields={updateFields} />}
-                        {currentStep === 5 && <Step5 formData={formData} updateFields={updateFields} />}
-                        {currentStep === 6 && <Step6 formData={formData} setCurrentStep={setCurrentStep} />}
+                        {/* Step 2: Consultation Mode (was Step 3 mode part) */}
+                        {currentStep === 2 && <Step2ConsultationMode formData={formData} updateFields={updateFields} />}
+                        {/* Step 3: Location + Clinic + Doctor (filtered by mode) */}
+                        {currentStep === 3 && <Step3LocationClinicDoctor formData={formData} updateFields={updateFields} />}
+                        {/* Step 4: Date & Time (was Step 3 schedule part) */}
+                        {currentStep === 4 && <Step4Schedule formData={formData} updateFields={updateFields} />}
+                        {currentStep === 5 && <Step5Medical formData={formData} updateFields={updateFields} />}
+                        {currentStep === 6 && <Step6Payment formData={formData} updateFields={updateFields} />}
+                        {/* Step6Review removed — now it's step 6 is payment, review is inline */}
 
                         <div className="flex justify-between items-center pt-10 border-t border-slate-100">
                             <button
@@ -203,17 +193,16 @@ export default function AppointmentWizard() {
     );
 }
 
-// --- SUB-COMPONENTS ---
-
+// --- STEPPER ---
 const Stepper = ({ currentStep }: { currentStep: number }) => {
     const steps = [
         { id: 0, icon: User },
         { id: 1, icon: SearchIcon },
-        { id: 2, icon: MapPin },
-        { id: 3, icon: Clock },
-        { id: 4, icon: HeartPulse },
-        { id: 5, icon: CreditCard },
-        { id: 6, icon: CheckCircle2 },
+        { id: 2, icon: Video },        // Consultation Mode
+        { id: 3, icon: MapPin },       // Location + Clinic + Doctor
+        { id: 4, icon: Clock },        // Date & Time
+        { id: 5, icon: HeartPulse },   // Medical Info
+        { id: 6, icon: CreditCard },   // Payment
     ];
 
     return (
@@ -240,6 +229,7 @@ interface StepProps {
     generatePatientId?: () => string;
 }
 
+// --- STEP 0: Patient Discovery ---
 const Step0 = ({ formData, updateFields, generatePatientId }: StepProps) => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="text-center space-y-2">
@@ -277,55 +267,10 @@ const Step0 = ({ formData, updateFields, generatePatientId }: StepProps) => (
     </div>
 );
 
-// const Step1 = ({ formData, updateFields }: StepProps) => (
-//     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-//         <div>
-//             <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 1: Patient Identity</h2>
-//             <p className="text-slate-500 text-sm">
-//                 {formData.patientType === "new" ? "Creating your unique medical profile." : "Locate your historical records."}
-//             </p>
-//         </div>
-
-//         {formData.patientType === "new" ? (
-//             <div className="space-y-8">
-//                 <div className="p-6 bg-teal-50 rounded-[28px] border border-teal-100 flex items-center justify-between">
-//                     <div>
-//                         <p className="text-[10px] font-bold text-medical-teal tracking-widest uppercase mb-1">Generated ID</p>
-//                         <p className="text-2xl font-bold text-medical-teal-dark tracking-tighter">{formData.patientId}</p>
-//                     </div>
-//                     <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-medical-teal shadow-sm"><Check className="w-6 h-6" /></div>
-//                 </div>
-//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                     <Input label="Full Medical Name" placeholder="John Doe" value={formData.fullName} onChange={(val) => updateFields({ fullName: val })} required />
-//                     <Input label="Email Address" type="email" placeholder="name@active.com" value={formData.email} onChange={(val) => updateFields({ email: val })} required />
-//                     <Input label="Mobile Number" type="tel" placeholder="+1 (000) 000-0000" value={formData.phone} onChange={(val) => updateFields({ phone: val })} required />
-//                     <Input label="Date of Birth" type="date" value={formData.dob} onChange={(val) => updateFields({ dob: val })} required />
-//                 </div>
-//             </div>
-//         ) : (
-//             <div className="space-y-6">
-//                 <div className="relative group">
-//                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-teal transition-colors"><SearchIcon className="w-5 h-5" /></div>
-//                     <input
-//                         type="text"
-//                         placeholder="Enter Patient ID (e.g. CRM-2025-XXXX) or Phone Number"
-//                         className="w-full bg-slate-50 border-slate-100 border p-5 pl-12 rounded-[24px] focus:ring-2 focus:ring-medical-teal/20 focus:border-medical-teal outline-none transition-all text-sm font-medium"
-//                         value={formData.patientId}
-//                         onChange={(e) => updateFields({ patientId: e.target.value })}
-//                         required
-//                     />
-//                 </div>
-//                 <div className="p-10 border border-dashed border-slate-200 rounded-[32px] text-center space-y-2">
-//                     <p className="text-sm font-medium text-slate-400">Search results will appear here after verification.</p>
-//                 </div>
-//             </div>
-//         )}
-//     </div>
-// );
-
+// --- STEP 1: Patient Identity ---
 const Step1 = ({ formData, updateFields }: StepProps) => {
     const [phoneError, setPhoneError] = useState("");
- 
+
     const handlePhone = (val: string) => {
         const digits = val.replace(/\D/g, "").slice(0, 10);
         updateFields({ phone: digits });
@@ -335,7 +280,7 @@ const Step1 = ({ formData, updateFields }: StepProps) => {
             setPhoneError("");
         }
     };
- 
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
@@ -344,7 +289,7 @@ const Step1 = ({ formData, updateFields }: StepProps) => {
                     {formData.patientType === "new" ? "Creating your unique medical profile." : "Locate your historical records."}
                 </p>
             </div>
- 
+
             {formData.patientType === "new" ? (
                 <div className="space-y-8">
                     <div className="p-6 bg-teal-50 rounded-[28px] border border-teal-100 flex items-center justify-between">
@@ -357,7 +302,6 @@ const Step1 = ({ formData, updateFields }: StepProps) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Input label="Full Medical Name" placeholder="John Doe" value={formData.fullName} onChange={(val) => updateFields({ fullName: val })} required />
                         <Input label="Email Address" type="email" placeholder="name@active.com" value={formData.email} onChange={(val) => updateFields({ email: val })} required />
-                        {/* Phone with validation */}
                         <div className="space-y-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Mobile Number</label>
                             <input
@@ -400,239 +344,84 @@ const Step1 = ({ formData, updateFields }: StepProps) => {
     );
 };
 
-// --- STEP 2: Real API Integration ---
-// const Step2 = ({ formData, updateFields }: StepProps) => {
-//     const [states, setStates] = useState<{ id: number; state_name: string }[]>([]);
-//     const [cities, setCities] = useState<{ city_id: number; city_name: string }[]>([]);
-//     const [clinics, setClinicList] = useState<any[]>([]);
-//     const [doctors, setDoctors] = useState<any[]>([]);
-//     const [loadingStates, setLoadingStates] = useState(true);
-//     const [loadingCities, setLoadingCities] = useState(false);
-//     const [loadingClinics, setLoadingClinics] = useState(false);
-//     const [loadingDoctors, setLoadingDoctors] = useState(false);
+// --- STEP 2: Consultation Mode (NEW — moved before location) ---
+const Step2ConsultationMode = ({ formData, updateFields }: StepProps) => (
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-slate-900">Step 2: Consultation Mode</h2>
+            <p className="text-slate-500 text-sm">How would you like to consult the doctor? Only doctors available for your selected mode will be shown.</p>
+        </div>
 
-//     // Fetch states on mount
-//     useEffect(() => {
-//         geoService.getStates()
-//             .then(res => setStates(res.data || []))
-//             .catch(() => {})
-//             .finally(() => setLoadingStates(false));
-//     }, []);
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <ModeCard
+                id="video"
+                title="Online Video"
+                desc="Consult from home via video call"
+                icon={Video}
+                active={formData.consultationMode === "video"}
+                onClick={() => updateFields({ consultationMode: "video", doctorId: "" })}
+            />
+            <ModeCard
+                id="clinic"
+                title="Offline Clinic"
+                desc="Visit the hospital in person"
+                icon={Hospital}
+                active={formData.consultationMode === "clinic"}
+                onClick={() => updateFields({ consultationMode: "clinic", doctorId: "" })}
+            />
+            <ModeCard
+                id="phone"
+                title="Phone Call"
+                desc="Direct call with the doctor"
+                icon={Phone}
+                active={formData.consultationMode === "phone"}
+                onClick={() => updateFields({ consultationMode: "phone", doctorId: "" })}
+            />
+        </div>
 
-//     // Fetch cities when state changes
-//     useEffect(() => {
-//         if (!formData.stateId) return;
-//         setLoadingCities(true);
-//         setCities([]);
-//         geoService.getCities(formData.stateId)
-//             .then(res => setCities(res.data || []))
-//             .catch(() => {})
-//             .finally(() => setLoadingCities(false));
-//     }, [formData.stateId]);
+        {/* Selected mode confirmation badge */}
+        {formData.consultationMode && (
+            <div className="p-5 bg-teal-50 border border-teal-100 rounded-[24px] flex items-center gap-4 animate-in fade-in duration-300">
+                <div className="w-10 h-10 bg-medical-teal rounded-xl flex items-center justify-center text-white shrink-0">
+                    {formData.consultationMode === "video" && <Video className="w-5 h-5" />}
+                    {formData.consultationMode === "clinic" && <Hospital className="w-5 h-5" />}
+                    {formData.consultationMode === "phone" && <Phone className="w-5 h-5" />}
+                </div>
+                <div>
+                    <p className="text-[10px] font-bold text-medical-teal uppercase tracking-widest mb-0.5">Selected Mode</p>
+                    <p className="text-sm font-bold text-slate-900 capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Only doctors offering this mode will be shown in the next step.</p>
+                </div>
+            </div>
+        )}
+    </div>
+);
 
-    
-
-//     useEffect(() => {
-//     if (!formData.cityId || !formData.stateName || !formData.city) return;
-//     setLoadingClinics(true);
-//     setClinicList([]);
-//     geoService.getClinicsByLocation(formData.stateName, formData.city)
-//         .then(res => setClinicList(res.data || []))
-//         .catch(() => {})
-//         .finally(() => setLoadingClinics(false));
-// }, [formData.cityId]);
-
-    
-
-//     useEffect(() => {
-//     if (!formData.clinicId) return;
-//     setLoadingDoctors(true);
-//     setDoctors([]);
-//     geoService.getDoctorsByClinic(formData.clinicId)
-//         .then(res => setDoctors(res.data || []))
-//         .catch(() => {})
-//         .finally(() => setLoadingDoctors(false));
-// }, [formData.clinicId]);
-
-//     return (
-//         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-//             <div>
-//                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 2: Clinic & Professional Selection</h2>
-//                 <p className="text-slate-500 text-sm">Find the right workspace and specialist for your needs.</p>
-//             </div>
-
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-//                 {/* Left: State → City → Clinic */}
-//                 <div className="space-y-6">
-//                     {/* State */}
-//                     <div className="space-y-2">
-//                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">State</label>
-//                         {loadingStates ? (
-//                             <div className="flex items-center gap-2 p-4 bg-slate-50 rounded-xl text-slate-400 text-sm">
-//                                 <Loader2 className="w-4 h-4 animate-spin" /> Loading states...
-//                             </div>
-//                         ) : (
-//                             <select
-//                                 value={formData.stateId || ""}
-//                                 onChange={(e) => {
-//                                     const selected = states.find(s => s.id === Number(e.target.value));
-//                                     updateFields({
-//                                         stateId: e.target.value,
-//                                         stateName: selected?.state_name || "",
-//                                         cityId: "",
-//                                         city: "",
-//                                         clinic: "",
-//                                         clinicId: "",
-//                                         doctorId: "",
-//                                     });
-//                                     setCities([]);
-//                                     setClinicList([]);
-//                                     setDoctors([]);
-//                                 }}
-//                                 className="w-full bg-slate-50 border-slate-100 border p-4 rounded-xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium appearance-none"
-//                             >
-//                                 <option value="">Select State</option>
-//                                 {states.map(s => (
-//                                     <option key={s.id} value={s.id}>{s.state_name}</option>
-//                                 ))}
-//                             </select>
-//                         )}
-//                     </div>
-
-//                     {/* City */}
-//                     {formData.stateId && (
-//                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-//                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">City</label>
-//                             {loadingCities ? (
-//                                 <div className="flex items-center gap-2 p-4 bg-slate-50 rounded-xl text-slate-400 text-sm">
-//                                     <Loader2 className="w-4 h-4 animate-spin" /> Loading cities...
-//                                 </div>
-//                             ) : (
-//                                 <select
-//                                     value={formData.cityId || ""}
-//                                     onChange={(e) => {
-//                                         const selected = cities.find(c => c.city_id === Number(e.target.value));
-//                                         updateFields({
-//                                             cityId: e.target.value,
-//                                             city: selected?.city_name || "",
-//                                             clinic: "",
-//                                             clinicId: "",
-//                                             doctorId: "",
-//                                         });
-//                                         setClinicList([]);
-//                                         setDoctors([]);
-//                                     }}
-//                                     className="w-full bg-slate-50 border-slate-100 border p-4 rounded-xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium appearance-none"
-//                                 >
-//                                     <option value="">Select City</option>
-//                                     {cities.map(c => (
-//                                         <option key={c.city_id} value={c.city_id}>{c.city_name}</option>
-//                                     ))}
-//                                 </select>
-//                             )}
-//                         </div>
-//                     )}
-
-//                     {/* Clinics */}
-//                     {formData.cityId && (
-//                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-//                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Primary Clinic</label>
-//                             {loadingClinics ? (
-//                                 <div className="flex items-center gap-2 p-4 bg-slate-50 rounded-xl text-slate-400 text-sm">
-//                                     <Loader2 className="w-4 h-4 animate-spin" /> Loading clinics...
-//                                 </div>
-//                             ) : clinics.length === 0 ? (
-//                                 <div className="p-4 bg-slate-50 rounded-xl text-slate-400 text-sm text-center border border-dashed border-slate-200">
-//                                     No clinics found in this city.
-//                                 </div>
-//                             ) : (
-//                                 <div className="grid grid-cols-1 gap-3 max-h-[280px] overflow-y-auto pr-1">
-//                                     {clinics.map(clinic => (
-//                                         <button
-//                                             key={clinic.id}
-//                                             type="button"
-//                                             onClick={() => {
-//                                                 updateFields({
-//                                                     clinic: clinic.name,
-//                                                     clinicId: String(clinic.id),
-//                                                     doctorId: "",
-//                                                 });
-//                                                 setDoctors([]);
-//                                             }}
-//                                             className={`p-4 rounded-2xl border text-left flex items-center gap-4 transition-all ${formData.clinicId === String(clinic.id) ? "border-medical-teal bg-teal-50/50 ring-1 ring-medical-teal" : "border-slate-100 hover:border-teal-100"}`}
-//                                         >
-//                                             <Hospital className={`w-5 h-5 shrink-0 ${formData.clinicId === String(clinic.id) ? "text-medical-teal" : "text-slate-400"}`} />
-//                                             <div>
-//                                                 <span className={`text-sm font-semibold block ${formData.clinicId === String(clinic.id) ? "text-slate-900" : "text-slate-600"}`}>{clinic.name}</span>
-//                                                 <span className="text-[10px] text-slate-400">{clinic.city}, {clinic.state}</span>
-//                                             </div>
-//                                         </button>
-//                                     ))}
-//                                 </div>
-//                             )}
-//                         </div>
-//                     )}
-//                 </div>
-
-//                 {/* Right: Doctors */}
-//                 <div className="space-y-4">
-//                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Specialists</label>
-//                     {!formData.clinicId ? (
-//                         <div className="h-[200px] bg-slate-50 border border-dashed border-slate-200 rounded-[28px] flex flex-col items-center justify-center gap-3 text-slate-400">
-//                             <Hospital className="w-8 h-8 opacity-20" />
-//                             <p className="text-xs font-medium">Please select a clinic first.</p>
-//                         </div>
-//                     ) : loadingDoctors ? (
-//                         <div className="h-[200px] bg-slate-50 rounded-[28px] flex items-center justify-center gap-2 text-slate-400 text-sm">
-//                             <Loader2 className="w-4 h-4 animate-spin" /> Loading doctors...
-//                         </div>
-//                     ) : doctors.length === 0 ? (
-//                         <div className="h-[200px] bg-slate-50 border border-dashed border-slate-200 rounded-[28px] flex flex-col items-center justify-center gap-3 text-slate-400">
-//                             <User className="w-8 h-8 opacity-20" />
-//                             <p className="text-xs font-medium">No doctors assigned to this clinic.</p>
-//                         </div>
-//                     ) : (
-//                         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-//                             {doctors.map((doc: any) => (
-//                                 <button
-//                                     key={doc.id}
-//                                     type="button"
-//                                     onClick={() => updateFields({ doctorId: String(doc.id) })}
-//                                     className={`w-full p-5 rounded-[28px] border text-left transition-all flex items-start gap-4 ${formData.doctorId === String(doc.id) ? "border-medical-teal bg-teal-50/50 ring-1 ring-medical-teal" : "border-slate-100 hover:border-teal-100 bg-white"}`}
-//                                 >
-//                                     <div className={`w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center ${formData.doctorId === String(doc.id) ? "bg-medical-teal text-white" : "bg-slate-50 text-slate-400"}`}>
-//                                         <User className="w-6 h-6" />
-//                                     </div>
-//                                     <div>
-//                                         <h5 className="font-bold text-slate-900">{doc.full_name}</h5>
-//                                         <p className="text-[10px] font-bold text-medical-teal uppercase tracking-widest mb-1">{doc.specialty || doc.specialization}</p>
-//                                         {doc.bio && <p className="text-xs text-slate-500 leading-relaxed italic">&quot;{doc.bio}&quot;</p>}
-//                                     </div>
-//                                 </button>
-//                             ))}
-//                         </div>
-//                     )}
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// };
-
-const Step2 = ({ formData, updateFields }: StepProps) => {
+// --- STEP 3: Location + Clinic + Doctor (filtered by consultationMode) ---
+const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
     const [states, setStates] = useState<{ id: number; state_name: string }[]>([]);
     const [cities, setCities] = useState<{ city_id: number; city_name: string }[]>([]);
     const [clinics, setClinicList] = useState<any[]>([]);
     const [doctors, setDoctors] = useState<any[]>([]);
- 
+
     const [stateSearch, setStateSearch] = useState("");
     const [citySearch, setCitySearch] = useState("");
     const [clinicSearch, setClinicSearch] = useState("");
- 
+
     const [loadingStates, setLoadingStates] = useState(true);
     const [loadingCities, setLoadingCities] = useState(false);
     const [loadingClinics, setLoadingClinics] = useState(false);
     const [loadingDoctors, setLoadingDoctors] = useState(false);
- 
+
+    // Filter doctors by selected consultation mode
+    const filteredDoctors = useMemo(() => {
+        if (!doctors.length || !formData.consultationMode) return doctors;
+        return doctors.filter((doc: any) => {
+            const prefs: string = (doc.consultation_preferences || "").toLowerCase();
+            return prefs.includes(formData.consultationMode.toLowerCase());
+        });
+    }, [doctors, formData.consultationMode]);
+
     const filteredStates = states.filter(s =>
         s.state_name.toLowerCase().includes(stateSearch.toLowerCase())
     );
@@ -642,14 +431,14 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
     const filteredClinics = clinics.filter(c =>
         c.name.toLowerCase().includes(clinicSearch.toLowerCase())
     );
- 
+
     useEffect(() => {
         geoService.getStates()
             .then(res => setStates(res.data || []))
             .catch(() => {})
             .finally(() => setLoadingStates(false));
     }, []);
- 
+
     useEffect(() => {
         if (!formData.stateId) return;
         setLoadingCities(true);
@@ -660,7 +449,7 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
             .catch(() => {})
             .finally(() => setLoadingCities(false));
     }, [formData.stateId]);
- 
+
     useEffect(() => {
         if (!formData.cityId || !formData.stateName || !formData.city) return;
         setLoadingClinics(true);
@@ -671,28 +460,51 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
             .catch(() => {})
             .finally(() => setLoadingClinics(false));
     }, [formData.cityId]);
- 
+
+    // useEffect(() => {
+    //     if (!formData.clinicId) return;
+    //     setLoadingDoctors(true);
+    //     setDoctors([]);
+    //     geoService.getDoctorsByClinic(formData.clinicId)
+    //         .then(res => 
+                
+    //             setDoctors(res.data || []))
+    //         .catch(() => {})
+    //         .finally(() => setLoadingDoctors(false));
+    // }, [formData.clinicId]);
     useEffect(() => {
-        if (!formData.clinicId) return;
-        setLoadingDoctors(true);
-        setDoctors([]);
-        geoService.getDoctorsByClinic(formData.clinicId)
-            .then(res => setDoctors(res.data || []))
-            .catch(() => {})
-            .finally(() => setLoadingDoctors(false));
-    }, [formData.clinicId]);
- 
+    if (!formData.clinicId) return;
+
+    setLoadingDoctors(true);
+    setDoctors([]);
+
+    geoService.getDoctorsByClinic(formData.clinicId)
+        .then((res) => {
+            console.log("Doctors API response:", res);
+            setDoctors(res.data || []);
+        })
+        .catch((err) => {
+            console.error("Doctors API error:", err);
+        })
+        .finally(() => setLoadingDoctors(false));
+}, [formData.clinicId]);
+
+    // Mode label helper
+    const modeLabel = formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call";
+
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 2: Clinic & Professional Selection</h2>
-                <p className="text-slate-500 text-sm">Find the right workspace and specialist for your needs.</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 3: Clinic & Doctor Selection</h2>
+                <p className="text-slate-500 text-sm">
+                    Showing doctors available for <span className="font-bold text-medical-teal">{modeLabel}</span> consultations.
+                </p>
             </div>
- 
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left: State → City → Clinic */}
                 <div className="space-y-6">
- 
+
                     {/* STATE */}
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">State</label>
@@ -702,7 +514,6 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                {/* Selected display */}
                                 {formData.stateName && (
                                     <div className="flex items-center justify-between px-4 py-2 bg-teal-50 border border-teal-100 rounded-xl">
                                         <p className="text-sm font-bold text-medical-teal">✓ {formData.stateName}</p>
@@ -758,7 +569,7 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
                             </div>
                         )}
                     </div>
- 
+
                     {/* CITY */}
                     {formData.stateId && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -825,7 +636,7 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
                             )}
                         </div>
                     )}
- 
+
                     {/* CLINIC */}
                     {formData.cityId && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -876,10 +687,18 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
                         </div>
                     )}
                 </div>
- 
-                {/* Right: Doctors */}
+
+                {/* Right: Doctors (filtered by mode) */}
                 <div className="space-y-4">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Specialists</label>
+                    <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Specialists</label>
+                        {formData.clinicId && !loadingDoctors && doctors.length > 0 && (
+                            <span className="text-[9px] font-bold text-medical-teal uppercase tracking-widest bg-teal-50 px-2 py-1 rounded-full border border-teal-100">
+                                {filteredDoctors.length} of {doctors.length} match your mode
+                            </span>
+                        )}
+                    </div>
+
                     {!formData.clinicId ? (
                         <div className="h-[200px] bg-slate-50 border border-dashed border-slate-200 rounded-[28px] flex flex-col items-center justify-center gap-3 text-slate-400">
                             <Hospital className="w-8 h-8 opacity-20" />
@@ -889,14 +708,18 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
                         <div className="h-[200px] bg-slate-50 rounded-[28px] flex items-center justify-center gap-2 text-slate-400 text-sm">
                             <Loader2 className="w-4 h-4 animate-spin" /> Loading doctors...
                         </div>
-                    ) : doctors.length === 0 ? (
-                        <div className="h-[200px] bg-slate-50 border border-dashed border-slate-200 rounded-[28px] flex flex-col items-center justify-center gap-3 text-slate-400">
+                    ) : filteredDoctors.length === 0 ? (
+                        <div className="h-[200px] bg-slate-50 border border-dashed border-slate-200 rounded-[28px] flex flex-col items-center justify-center gap-3 text-slate-400 px-6 text-center">
                             <User className="w-8 h-8 opacity-20" />
-                            <p className="text-xs font-medium">No doctors assigned to this clinic.</p>
+                            <p className="text-xs font-medium">
+                                {doctors.length === 0
+                                    ? "No doctors assigned to this clinic."
+                                    : `No doctors available for ${modeLabel} in this clinic. Try a different mode or clinic.`}
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                            {doctors.map((doc: any) => (
+                            {filteredDoctors.map((doc: any) => (
                                 <button
                                     key={doc.id}
                                     type="button"
@@ -906,10 +729,20 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
                                     <div className={`w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center ${formData.doctorId === String(doc.id) ? "bg-medical-teal text-white" : "bg-slate-50 text-slate-400"}`}>
                                         <User className="w-6 h-6" />
                                     </div>
-                                    <div>
+                                    <div className="flex-1">
                                         <h5 className="font-bold text-slate-900">{doc.full_name}</h5>
                                         <p className="text-[10px] font-bold text-medical-teal uppercase tracking-widest mb-1">{doc.specialization}</p>
                                         {doc.bio && <p className="text-xs text-slate-500 leading-relaxed italic">&quot;{doc.bio}&quot;</p>}
+                                        {/* Show available modes as small badges */}
+                                        {doc.consultation_preferences && (
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {doc.consultation_preferences.split(",").map((m: string) => (
+                                                    <span key={m.trim()} className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${m.trim().toLowerCase() === formData.consultationMode ? "bg-medical-teal text-white border-medical-teal" : "bg-slate-50 text-slate-400 border-slate-100"}`}>
+                                                        {m.trim()}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </button>
                             ))}
@@ -921,61 +754,52 @@ const Step2 = ({ formData, updateFields }: StepProps) => {
     );
 };
 
-const Step3 = ({ formData, updateFields }: StepProps) => (
+// --- STEP 4: Date & Time Schedule ---
+const Step4Schedule = ({ formData, updateFields }: StepProps) => (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 3: Schedule Details</h2>
-            <p className="text-slate-500 text-sm">Select how and when you want to consult the doctor.</p>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 4: Schedule Details</h2>
+            <p className="text-slate-500 text-sm">Select when you want your <span className="font-bold text-medical-teal capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</span> appointment.</p>
         </div>
 
-        <div className="space-y-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             <div className="space-y-4">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Consultation Mode *</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <ModeCard id="video" title="Online Video" desc="Consult from home" icon={Video} active={formData.consultationMode === "video"} onClick={() => updateFields({ consultationMode: "video" })} />
-                    <ModeCard id="clinic" title="Offline Clinic" desc="Visit the hospital" icon={Hospital} active={formData.consultationMode === "clinic"} onClick={() => updateFields({ consultationMode: "clinic" })} />
-                    <ModeCard id="phone" title="Phone Call" desc="Direct doctor call" icon={Phone} active={formData.consultationMode === "phone"} onClick={() => updateFields({ consultationMode: "phone" })} />
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Select Date *</label>
+                <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                    <input
+                        type="date"
+                        className="w-full bg-slate-50 border-slate-100 border p-5 pl-12 rounded-[24px] focus:ring-2 focus:ring-medical-teal outline-none transition-all font-medium text-slate-700"
+                        value={formData.date}
+                        onChange={(e) => updateFields({ date: e.target.value })}
+                        required
+                    />
                 </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-4">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Select Date *</label>
-                    <div className="relative">
-                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                        <input
-                            type="date"
-                            className="w-full bg-slate-50 border-slate-100 border p-5 pl-12 rounded-[24px] focus:ring-2 focus:ring-medical-teal outline-none transition-all font-medium text-slate-700"
-                            value={formData.date}
-                            onChange={(e) => updateFields({ date: e.target.value })}
-                            required
-                        />
-                    </div>
-                </div>
-                <div className="space-y-4">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Slots *</label>
-                    <div className="grid grid-cols-3 gap-2">
-                        {TIME_SLOTS.map(slot => (
-                            <button
-                                key={slot}
-                                type="button"
-                                onClick={() => updateFields({ time: slot })}
-                                className={`py-3 px-1 rounded-xl text-[10px] font-bold tracking-tighter border transition-all ${formData.time === slot ? "bg-medical-teal border-medical-teal text-white shadow-lg shadow-teal-100" : "bg-white border-slate-100 text-slate-500 hover:border-teal-200"}`}
-                            >
-                                {slot}
-                            </button>
-                        ))}
-                    </div>
+            <div className="space-y-4">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Slots *</label>
+                <div className="grid grid-cols-3 gap-2">
+                    {TIME_SLOTS.map(slot => (
+                        <button
+                            key={slot}
+                            type="button"
+                            onClick={() => updateFields({ time: slot })}
+                            className={`py-3 px-1 rounded-xl text-[10px] font-bold tracking-tighter border transition-all ${formData.time === slot ? "bg-medical-teal border-medical-teal text-white shadow-lg shadow-teal-100" : "bg-white border-slate-100 text-slate-500 hover:border-teal-200"}`}
+                        >
+                            {slot}
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>
     </div>
 );
 
-const Step4 = ({ formData, updateFields }: StepProps) => (
+// --- STEP 5: Medical Info ---
+const Step5Medical = ({ formData, updateFields }: StepProps) => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 4: Medical Environment</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 5: Medical Environment</h2>
             <p className="text-slate-500 text-sm">Help our clinical team prepare for your intake.</p>
         </div>
         <div className="space-y-6">
@@ -997,10 +821,11 @@ const Step4 = ({ formData, updateFields }: StepProps) => (
     </div>
 );
 
-const Step5 = ({ formData, updateFields }: StepProps) => (
+// --- STEP 6: Payment ---
+const Step6Payment = ({ formData, updateFields }: StepProps) => (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="text-center">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 5: Payment Portal</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 6: Payment Portal</h2>
             <p className="text-slate-500 text-sm">Select your preferred method for settlement.</p>
         </div>
 
@@ -1054,73 +879,49 @@ const Step5 = ({ formData, updateFields }: StepProps) => (
                 </div>
             </div>
         )}
-    </div>
-);
 
-const Step6 = ({ formData, setCurrentStep }: { formData: FormData; setCurrentStep: (step: number) => void }) => {
-    return (
-        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 6: Institutional Review</h2>
-                <p className="text-slate-500 text-sm">Confirm your clinical parameters for unified record entry.</p>
-            </div>
-
-            <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SummaryCard
-                        title="Patient Protocol"
-                        icon={User}
-                        onEdit={() => setCurrentStep(1)}
-                        rows={[
-                            { label: "Patient ID", value: formData.patientId },
-                            { label: "Appt ID", value: formData.appointmentId },
-                            { label: "Profile", value: formData.fullName || "Existing Record" },
-                            { label: "Contact", value: formData.phone }
-                        ]}
-                    />
-                    <SummaryCard
-                        title="Clinical Node"
-                        icon={Hospital}
-                        onEdit={() => setCurrentStep(2)}
-                        rows={[
-                            { label: "State", value: formData.stateName },
-                            { label: "City", value: formData.city },
-                            { label: "Facility", value: formData.clinic },
-                        ]}
-                    />
-                </div>
-
-                <div className="p-8 bg-slate-50 rounded-[32px] border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-medical-teal shadow-sm"><Clock className="w-6 h-6" /></div>
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Session Timeline</p>
-                            <h4 className="text-xl font-bold text-slate-900">{formData.date} at {formData.time}</h4>
-                            <p className="text-xs text-medical-teal font-bold tracking-widest uppercase mt-1 flex items-center gap-1">
-                                <div className="w-1 h-1 bg-medical-teal rounded-full animate-pulse" /> {formData.consultationMode} CONSULTATION
-                            </p>
-                        </div>
-                    </div>
-                    <button type="button" onClick={() => setCurrentStep(3)} className="text-[10px] font-bold text-medical-teal uppercase hover:underline">Change Schedule</button>
-                </div>
-
-                <div className="p-8 bg-teal-600 rounded-[32px] text-white space-y-4 shadow-xl shadow-teal-900/10">
-                    <div className="flex items-center gap-3">
-                        <Bell className="w-6 h-6" />
-                        <h4 className="text-lg font-bold">Automated Notifications Activated</h4>
-                    </div>
-                    <p className="text-sm text-teal-50/80 leading-relaxed">You will receive the following via <span className="text-white font-bold italic">Email, SMS, WhatsApp & Telegram:</span></p>
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8 text-xs font-medium text-teal-100">
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4" /> Booking & Payment Receipt</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4" /> HD Link for Video (Zoom/Meet)</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4" /> 4-5 Hour Prior Reminder</li>
-                        <li className="flex items-center gap-2"><Check className="w-4 h-4" /> 1-Hour Final Alert</li>
-                    </ul>
-                </div>
+        {/* Summary review before final confirm */}
+        <div className="space-y-4 pt-4 border-t border-slate-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Appointment Summary</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SummaryCard
+                    title="Patient Protocol"
+                    icon={User}
+                    onEdit={() => {}}
+                    rows={[
+                        { label: "Patient ID", value: formData.patientId },
+                        { label: "Profile", value: formData.fullName || "Existing Record" },
+                        { label: "Contact", value: formData.phone }
+                    ]}
+                />
+                <SummaryCard
+                    title="Clinical Node"
+                    icon={Hospital}
+                    onEdit={() => {}}
+                    rows={[
+                        { label: "Mode", value: formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call" },
+                        { label: "Facility", value: formData.clinic },
+                        { label: "Schedule", value: formData.date && formData.time ? `${formData.date} at ${formData.time}` : "Not set" },
+                    ]}
+                />
             </div>
         </div>
-    );
-};
+
+        <div className="p-8 bg-teal-600 rounded-[32px] text-white space-y-4 shadow-xl shadow-teal-900/10">
+            <div className="flex items-center gap-3">
+                <Bell className="w-6 h-6" />
+                <h4 className="text-lg font-bold">Automated Notifications Activated</h4>
+            </div>
+            <p className="text-sm text-teal-50/80 leading-relaxed">You will receive the following via <span className="text-white font-bold italic">Email, SMS, WhatsApp & Telegram:</span></p>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8 text-xs font-medium text-teal-100">
+                <li className="flex items-center gap-2"><Check className="w-4 h-4" /> Booking & Payment Receipt</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4" /> HD Link for Video (Zoom/Meet)</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4" /> 4-5 Hour Prior Reminder</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4" /> 1-Hour Final Alert</li>
+            </ul>
+        </div>
+    </div>
+);
 
 // --- CORE UI ELEMENTS ---
 
@@ -1154,12 +955,14 @@ const ModeCard = ({ title, desc, icon: Icon, active, onClick }: ModeCardProps) =
     <button
         type="button"
         onClick={onClick}
-        className={`p-5 rounded-[24px] border-2 text-left transition-all flex flex-col gap-4 ${active ? "border-medical-teal bg-teal-50/50" : "border-slate-50 bg-white hover:border-teal-100"}`}
+        className={`p-8 rounded-[28px] border-2 text-left transition-all flex flex-col gap-5 ${active ? "border-medical-teal bg-teal-50/50 shadow-inner" : "border-slate-100 bg-white hover:border-teal-200"}`}
     >
-        <Icon className={`w-8 h-8 ${active ? "text-medical-teal" : "text-slate-300"}`} />
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${active ? "bg-medical-teal text-white shadow-lg shadow-teal-100" : "bg-slate-100 text-slate-300"}`}>
+            <Icon className="w-7 h-7" />
+        </div>
         <div>
-            <h5 className="font-bold text-slate-900 text-sm">{title}</h5>
-            <p className="text-[10px] text-slate-500">{desc}</p>
+            <h5 className="font-bold text-slate-900 text-base mb-1">{title}</h5>
+            <p className="text-xs text-slate-500 leading-relaxed">{desc}</p>
         </div>
     </button>
 );
@@ -1173,7 +976,6 @@ interface SummaryCardProps {
 
 const SummaryCard = ({ title, icon: Icon, onEdit, rows }: SummaryCardProps) => (
     <div className="p-6 bg-slate-50 rounded-[28px] border border-slate-100 relative group">
-        <button type="button" onClick={onEdit} className="absolute top-4 right-4 text-[9px] font-bold text-medical-teal uppercase hover:underline opacity-0 group-hover:opacity-100 transition-opacity">Edit</button>
         <h5 className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
             <Icon className="w-3 h-3" /> {title}
         </h5>
@@ -1210,6 +1012,7 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                         <Detail label="Patient ID" value={formData.patientId} accent />
                         <Detail label="Appt ID" value={formData.appointmentId} accent />
                         <Detail label="Patient" value={formData.fullName || "Historical Name"} />
+                        <Detail label="Mode" value={formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"} />
                         <Detail label="State" value={formData.stateName} />
                         <Detail label="City" value={formData.city} />
                         <Detail label="Clinic" value={formData.clinic} />

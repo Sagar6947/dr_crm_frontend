@@ -48,6 +48,7 @@ function AddDoctorForm() {
         address: "",
         reg_number: "",
         qualification: "",
+        consultant_preference: "",
         specialization: "",
         experience_years: "",
         username: "",
@@ -82,6 +83,7 @@ function AddDoctorForm() {
                         address: d.address || "",
                         reg_number: d.reg_number || "",
                         qualification: d.qualification || "",
+                        consultant_preference: d.consultation_preferences || "",
                         specialization: d.specialization || "",
                         experience_years: d.experience_years ? String(d.experience_years) : "",
                         username: d.username || "",
@@ -147,11 +149,21 @@ function AddDoctorForm() {
             const submitData = new FormData();
 
             // Append all text fields
+            // Object.entries(formData).forEach(([key, value]) => {
+            //     // Skip password in edit mode if empty
+            //     if (key === "password" && isEditMode && !value) return;
+            //     submitData.append(key, value);
+            // });
             Object.entries(formData).forEach(([key, value]) => {
-                // Skip password in edit mode if empty
-                if (key === "password" && isEditMode && !value) return;
-                submitData.append(key, value);
-            });
+    if (key === "password" && isEditMode && !value) return;
+
+    if (key === "consultant_preference") {
+        submitData.append("consultation_preferences", value);
+        return;
+    }
+
+    submitData.append(key, value);
+});
 
             // Append files
             if (profilePhotoFile) submitData.append("profile_photo", profilePhotoFile);
@@ -385,6 +397,18 @@ function AddDoctorForm() {
                                 <input type="text" placeholder="e.g. MBBS, MD"
                                     className={inputClass()} value={formData.qualification} onChange={(e) => set("qualification", e.target.value)} disabled={isSubmitting} />
                             </div>
+
+                            <div>
+    <label className={labelClass}>Consultant Preference</label>
+    <input
+        type="text"
+        placeholder="e.g. video, clinic, phone"
+        className={inputClass()}
+        value={formData.consultant_preference}
+        onChange={(e) => set("consultant_preference", e.target.value)}
+        disabled={isSubmitting}
+    />
+</div>
 
                             <div>
                                 <label className={labelClass}>Experience (Years)</label>
