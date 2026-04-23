@@ -1,33 +1,126 @@
+// export async function request(endpoint: string, options: RequestInit = {}) {
+//     try {
+//         const defaultHeaders: any = {};
+//         if (!(options.body instanceof FormData)) {
+//             defaultHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+//         }
+
+//         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+//             ...options,
+//             headers: {
+//                 ...defaultHeaders,
+//                 ...options.headers,
+//             },
+//         });
+
+//         const data = await response.json();
+
+//         // Handle AbortError specifically if needed, but fetch usually throws it automatically
+//         if (data.status !== 200) {
+//             throw data;
+//         }
+
+//         return data;
+//     } catch (error: any) {
+//         if (error.name === 'AbortError') {
+//             console.log('Request aborted:', endpoint);
+//             throw error;
+//         }
+//         throw error;
+//     }
+// }
+// export async function request(endpoint: string, options: RequestInit = {}) {
+//   try {
+//     const defaultHeaders: any = {};
+
+//     // 🔐 token (client-side only)
+//     const token =
+//       typeof window !== "undefined"
+//         ? localStorage.getItem("adminToken")
+//         : null;
+
+//     if (token) {
+//       defaultHeaders["Authorization"] = token; // same as Postman
+//     }
+
+//     // 📦 content-type
+//     if (!(options.body instanceof FormData)) {
+//       defaultHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+//     }
+
+//     const response = await fetch(
+//       `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
+//       {
+//         ...options,
+//         headers: {
+//           ...defaultHeaders,
+//           ...options.headers,
+//         },
+//       }
+//     );
+
+//     // ❗ network error handle
+//     if (!response.ok) {
+//       throw { message: "Network error", status: response.status };
+//     }
+
+//     const data = await response.json();
+
+//     // ❗ API error handle
+//     if (data.status !== 200) {
+//       throw data;
+//     }
+
+//     return data;
+//   } catch (error: any) {
+//     console.error("API Error:", error);
+//     throw error;
+//   }
+// }
+
+
 export async function request(endpoint: string, options: RequestInit = {}) {
-    try {
-        const defaultHeaders: any = {};
-        if (!(options.body instanceof FormData)) {
-            defaultHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
-        }
+  try {
+    const defaultHeaders: any = {};
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
-            ...options,
-            headers: {
-                ...defaultHeaders,
-                ...options.headers,
-            },
-        });
+    // 🔐 Token add
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("adminToken")
+        : null;
 
-        const data = await response.json();
-
-        // Handle AbortError specifically if needed, but fetch usually throws it automatically
-        if (data.status !== 200) {
-            throw data;
-        }
-
-        return data;
-    } catch (error: any) {
-        if (error.name === 'AbortError') {
-            console.log('Request aborted:', endpoint);
-            throw error;
-        }
-        throw error;
+    if (token) {
+      defaultHeaders["Authorization"] = token;
     }
+
+    // 📦 Content type
+    if (!(options.body instanceof FormData)) {
+      defaultHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+    }
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
+      {
+        ...options,
+        headers: {
+          ...defaultHeaders,
+          ...options.headers,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    // 🔥 IMPORTANT FIX
+    if (!response.ok || data.status !== 200) {
+      throw data; // backend ka real message pass karo
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error("API Error:", error);
+    throw error;
+  }
 }
 
 export const clinicService = {
@@ -40,7 +133,7 @@ export const clinicService = {
         return request('/clinic/list', {
             method: 'POST',
             body: body,
-            signal
+            
         });
     },
     getById: (id: string, signal?: AbortSignal) => {
@@ -249,5 +342,19 @@ export const appointmentService = {
         body,
         signal
     });
+
+
+    
 },
+};
+
+// ✅ ADD THIS AT END OF FILE
+
+export const authService = {
+  adminLogin: (formData: FormData) => {
+    return request('/admin/login', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
