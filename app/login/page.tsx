@@ -373,7 +373,7 @@ export default function LoginPage() {
       // ✅ IMPORTANT FIX
       if (token) {
         document.cookie = `adminToken=${token}; path=/`;
-        localStorage.setItem("adminToken", token);
+        
       }
 
       router.push("/admin");

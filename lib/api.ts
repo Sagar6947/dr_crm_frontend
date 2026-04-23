@@ -1,99 +1,31 @@
-// export async function request(endpoint: string, options: RequestInit = {}) {
-//     try {
-//         const defaultHeaders: any = {};
-//         if (!(options.body instanceof FormData)) {
-//             defaultHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
-//         }
 
-//         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
-//             ...options,
-//             headers: {
-//                 ...defaultHeaders,
-//                 ...options.headers,
-//             },
-//         });
 
-//         const data = await response.json();
 
-//         // Handle AbortError specifically if needed, but fetch usually throws it automatically
-//         if (data.status !== 200) {
-//             throw data;
-//         }
+// 🔐 Helper: get token from cookie
+function getCookie(name: string) {
+  if (typeof document === "undefined") return null;
 
-//         return data;
-//     } catch (error: any) {
-//         if (error.name === 'AbortError') {
-//             console.log('Request aborted:', endpoint);
-//             throw error;
-//         }
-//         throw error;
-//     }
-// }
-// export async function request(endpoint: string, options: RequestInit = {}) {
-//   try {
-//     const defaultHeaders: any = {};
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(";").shift() || null;
+  }
 
-//     // 🔐 token (client-side only)
-//     const token =
-//       typeof window !== "undefined"
-//         ? localStorage.getItem("adminToken")
-//         : null;
-
-//     if (token) {
-//       defaultHeaders["Authorization"] = token; // same as Postman
-//     }
-
-//     // 📦 content-type
-//     if (!(options.body instanceof FormData)) {
-//       defaultHeaders["Content-Type"] = "application/x-www-form-urlencoded";
-//     }
-
-//     const response = await fetch(
-//       `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
-//       {
-//         ...options,
-//         headers: {
-//           ...defaultHeaders,
-//           ...options.headers,
-//         },
-//       }
-//     );
-
-//     // ❗ network error handle
-//     if (!response.ok) {
-//       throw { message: "Network error", status: response.status };
-//     }
-
-//     const data = await response.json();
-
-//     // ❗ API error handle
-//     if (data.status !== 200) {
-//       throw data;
-//     }
-
-//     return data;
-//   } catch (error: any) {
-//     console.error("API Error:", error);
-//     throw error;
-//   }
-// }
-
+  return null;
+}
 
 export async function request(endpoint: string, options: RequestInit = {}) {
   try {
     const defaultHeaders: any = {};
 
-    // 🔐 Token add
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("adminToken")
-        : null;
+    // 🔐 Token from COOKIE (NOT localStorage)
+    const token = getCookie("adminToken");
 
     if (token) {
       defaultHeaders["Authorization"] = token;
     }
 
-    // 📦 Content type
+    // 📦 Content type (skip for FormData)
     if (!(options.body instanceof FormData)) {
       defaultHeaders["Content-Type"] = "application/x-www-form-urlencoded";
     }
@@ -111,9 +43,9 @@ export async function request(endpoint: string, options: RequestInit = {}) {
 
     const data = await response.json();
 
-    // 🔥 IMPORTANT FIX
+    // ❗ API error handling
     if (!response.ok || data.status !== 200) {
-      throw data; // backend ka real message pass karo
+      throw data;
     }
 
     return data;
