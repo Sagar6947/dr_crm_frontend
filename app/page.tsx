@@ -7,7 +7,7 @@ export default function Home() {
     <div className="min-h-screen">
       <Header />
 
-      {/* HERO SECTION  */}
+      {/* HERO SECTION */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full -z-10 bg-gradient-to-b from-teal-50 to-white opacity-60" />
         <div className="container mx-auto px-6 text-center">
