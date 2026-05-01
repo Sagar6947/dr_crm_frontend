@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
     LayoutDashboard,
     Hospital,
@@ -44,6 +45,7 @@ const SidebarItem = ({ href, icon: Icon, label, active }: SidebarItemProps) => (
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const pathname = usePathname();
+     const router = useRouter();
 
     const navigation = [
         { label: "Overview", href: "/admin", icon: LayoutDashboard },
@@ -54,6 +56,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { label: "Medicine Stock", href: "/admin/medicine-stock", icon: Package },
         { label: "Billing", href: "/admin/billing", icon: CreditCard },
     ];
+    const handleLogout = () => {
+    // token delete
+    document.cookie = "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+
+    // redirect login
+    // router.push("/login");
+    router.replace("/login");
+};
 
     return (
         <div className="min-h-screen bg-medical-slate-bg font-sans">
@@ -99,7 +109,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             label={isSidebarOpen ? "Settings" : ""}
                             active={pathname === "/admin/settings"}
                         />
-                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all duration-200 group">
+                        <button
+    onClick={handleLogout}
+    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all duration-200 group"
+>
                             <LogOut className="w-5 h-5 text-slate-400 group-hover:text-rose-600" />
                             {isSidebarOpen && <span className="text-sm font-semibold">Logout</span>}
                         </button>

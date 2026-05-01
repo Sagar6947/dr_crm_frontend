@@ -1,23 +1,4 @@
 
-// // "use client";
-
-// // import { useState } from "react";
-// // import { HeartPulse, Eye, EyeOff, ArrowRight } from "lucide-react";
-// // import Link from "next/link";
-// // import Header from "@/components/Header";
-
-// // export default function LoginPage() {
-// //   const [showPassword, setShowPassword] = useState(false);
-// //   const [form, setForm] = useState({ email: "", password: "" });
-
-// //   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-// //     setForm({ ...form, [e.target.name]: e.target.value });
-// //   };
-
-// //   const handleSubmit = (e: React.FormEvent) => {
-// //     e.preventDefault();
-// //     console.log(form);
-// //   };
 // "use client";
 
 // import { useState } from "react";
@@ -25,6 +6,7 @@
 // import Link from "next/link";
 // import Header from "@/components/Header";
 // import { useRouter } from "next/navigation";
+// import { authService } from "@/lib/api"; // ✅ correct import
 
 // export default function LoginPage() {
 //   const router = useRouter();
@@ -37,176 +19,46 @@
 //     password: "",
 //   });
 
-//   const staticCredentials = {
-//     email: "admin@gmail.com",
-//     password: "admin123",
-//   };
-
 //   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 //     setForm({ ...form, [e.target.name]: e.target.value });
 //     setError("");
 //   };
 
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault();
+//   // 🔥 ONLY THIS PART CHANGED
+//   const handleSubmit = async (e: React.FormEvent) => {
+//   e.preventDefault();
 
-//     if (
-//       form.email === staticCredentials.email &&
-//       form.password === staticCredentials.password
-//     ) {
-//       router.push("/admin");
-//     } else {
-//       setError("Invalid email or password");
-//     }
-//   };
+//   try {
+//     const formData = new FormData();
+//     formData.append("contact_no", form.email);
+//     formData.append("password", form.password);
 
-//   return (
-   
-//     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-teal-50 p-4">
-      
-//         <Header />
-     
-//       {/* Login Card - Small box */}
-//       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6">
+//     const res = await authService.adminLogin(formData);
+
+//     console.log("API Response:", res);
+
+//     if (res.status === 200) {
+//       const token = res.data?.token;
+
+//       // ✅ IMPORTANT FIX
+//       if (token) {
+//         document.cookie = `adminToken=${token}; path=/`;
         
-//         {/* Logo */}
-//         <div className="flex items-center justify-center gap-2 mb-4">
-//           <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center">
-//             <HeartPulse className="text-white w-5 h-5" />
-//           </div>
-//           <span className="text-xl font-bold text-slate-900">Dr. CRM</span>
-//         </div>
+//       }
 
-//         <h1 className="text-xl font-bold text-slate-900 text-center mb-1">Welcome Back</h1>
-//         <p className="text-slate-400 text-xs text-center mb-6">Sign in to your account</p>
-
-//         <form onSubmit={handleSubmit} className="space-y-4">
-
-//           {/* EMAIL */}
-//           <div>
-//             <label className="block text-xs font-medium text-slate-600 mb-1">
-//               Email
-//             </label>
-//             <input
-//               type="email"
-//               name="email"
-//               value={form.email}
-//               onChange={handleChange}
-//               placeholder="you@clinic.com"
-//               required
-//               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
-//             />
-//           </div>
-
-//           {/* PASSWORD */}
-//           <div>
-//             <div className="flex justify-between items-center mb-1">
-//               <label className="text-xs font-medium text-slate-600">Password</label>
-//               <Link href="/forgot-password" className="text-[10px] text-teal-600 hover:underline">
-//                 Forgot?
-//               </Link>
-//             </div>
-//             <div className="relative">
-//               <input
-//                 type={showPassword ? "text" : "password"}
-//                 name="password"
-//                 value={form.password}
-//                 onChange={handleChange}
-//                 required
-//                 placeholder="••••••••"
-//                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 pr-10"
-//               />
-//               <button
-//                 type="button"
-//                 onClick={() => setShowPassword(!showPassword)}
-//                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600"
-//               >
-//                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-//               </button>
-//             </div>
-//           </div>
-
-//           {/* REMEMBER ME */}
-//           <div className="flex items-center justify-between">
-//             <label className="flex items-center gap-2">
-//               <input type="checkbox" className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
-//               <span className="text-xs text-slate-600">Remember me</span>
-//             </label>
-//           </div>
-
-//           {/* SUBMIT */}
-//           <button
-//             type="submit"
-//             className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all"
-//           >
-//             Sign In <ArrowRight className="w-4 h-4" />
-//           </button>
-
-//         </form>
-
-//         {/* Footer */}
-//         <p className="text-center text-xs text-slate-400 mt-6">
-//           Don't have an account?{" "}
-//           <Link href="/appointment" className="text-teal-600 font-medium hover:underline">
-//             Book a Demo
-//           </Link>
-//         </p>
-
-//         {/* Trust badge */}
-//         <p className="text-center text-[10px] text-slate-300 mt-4">
-//           Secured by enterprise encryption
-//         </p>
-//       </div>
-//     </main>
-//   );
-// }
-
-// "use client";
-
-// import { useState } from "react";
-// import { HeartPulse, Eye, EyeOff, ArrowRight } from "lucide-react";
-// import Link from "next/link";
-// import Header from "@/components/Header";
-// import { useRouter } from "next/navigation";
-
-// export default function LoginPage() {
-//   const router = useRouter();
-
-//   const [showPassword, setShowPassword] = useState(false);
-//   const [error, setError] = useState("");
-
-//   const [form, setForm] = useState({
-//     email: "",
-//     password: "",
-//   });
-
-//   // Static credentials for demo
-//   const staticCredentials = {
-//     email: "admin@gmail.com",
-//     password: "admin123",
-//   };
-
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setForm({ ...form, [e.target.name]: e.target.value });
-//     setError("");
-//   };
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault();
-
-//     if (
-//       form.email === staticCredentials.email &&
-//       form.password === staticCredentials.password
-//     ) {
-//       // Set login cookie for admin route protection
-//       document.cookie = "adminAuth=true; path=/";
-
-//       // Redirect to admin panel
-//       router.replace("/admin");
-//     } else {
-//       setError("Invalid email or password");
+//       router.push("/admin");
 //     }
-//   };
+//   } catch (err: any) {
+//   console.log("Login Error:", err);
+
+//   // 🔥 backend ka real message show karo
+//   if (err?.message) {
+//     setError(err.message);
+//   } else {
+//     setError("Invalid credentials");
+//   }
+// }
+// };
 
 //   return (
 //     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-teal-50 p-4">
@@ -222,24 +74,24 @@
 //         </div>
 
 //         <h1 className="text-xl font-bold text-slate-900 text-center mb-1">
-//           Welcome Back
+//           Admin Login
 //         </h1>
 //         <p className="text-slate-400 text-xs text-center mb-6">
 //           Sign in to your account
 //         </p>
 
 //         <form onSubmit={handleSubmit} className="space-y-4">
-//           {/* EMAIL */}
+//           {/* CONTACT */}
 //           <div>
 //             <label className="block text-xs font-medium text-slate-600 mb-1">
-//               Email
+//               Contact Number
 //             </label>
 //             <input
-//               type="email"
+//               type="text"
 //               name="email"
 //               value={form.email}
 //               onChange={handleChange}
-//               placeholder="admin@gmail.com"
+//               placeholder="Enter contact number"
 //               required
 //               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
 //             />
@@ -251,12 +103,6 @@
 //               <label className="text-xs font-medium text-slate-600">
 //                 Password
 //               </label>
-//               <Link
-//                 href="/forgot-password"
-//                 className="text-[10px] text-teal-600 hover:underline"
-//               >
-//                 Forgot?
-//               </Link>
 //             </div>
 
 //             <div className="relative">
@@ -266,7 +112,7 @@
 //                 value={form.password}
 //                 onChange={handleChange}
 //                 required
-//                 placeholder="admin123"
+//                 placeholder="Enter password"
 //                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 pr-10"
 //               />
 
@@ -284,111 +130,110 @@
 //             </div>
 //           </div>
 
-//           {/* ERROR MESSAGE */}
+//           {/* ERROR */}
 //           {error && (
 //             <p className="text-red-500 text-xs text-center">{error}</p>
 //           )}
-
-//           {/* REMEMBER ME */}
-//           <div className="flex items-center justify-between">
-//             <label className="flex items-center gap-2">
-//               <input
-//                 type="checkbox"
-//                 className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-//               />
-//               <span className="text-xs text-slate-600">Remember me</span>
-//             </label>
-//           </div>
 
 //           {/* SUBMIT */}
 //           <button
 //             type="submit"
 //             className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all"
 //           >
-//             Sign In <ArrowRight className="w-4 h-4" />
+//             Login <ArrowRight className="w-4 h-4" />
 //           </button>
 //         </form>
-
-//         {/* Footer */}
-//         <p className="text-center text-xs text-slate-400 mt-6">
-//           Don't have an account?{" "}
-//           <Link
-//             href="/appointment"
-//             className="text-teal-600 font-medium hover:underline"
-//           >
-//             Book a Demo
-//           </Link>
-//         </p>
-
-//         {/* Trust badge */}
-//         <p className="text-center text-[10px] text-slate-300 mt-4">
-//           Secured by enterprise encryption
-//         </p>
 //       </div>
 //     </main>
 //   );
-// } 
-
+// }
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { HeartPulse, Eye, EyeOff, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import { useRouter } from "next/navigation";
-import { authService } from "@/lib/api"; // ✅ correct import
+import { authService } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [contactError, setContactError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
 
+  useEffect(() => {
+  // const token = document.cookie.includes("adminToken");
+  const token = document.cookie
+  .split("; ")
+  .find(row => row.startsWith("adminToken="));
+
+  if (token) {
+    router.replace("/admin");
+  }
+}, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // 🔥 ONLY NUMBER VALIDATION
+    if (name === "email") {
+      if (!/^\d*$/.test(value)) {
+        setContactError("Only numbers are allowed");
+        return;
+      } else {
+        setContactError("");
+      }
+    }
+
+    setForm({ ...form, [name]: value });
     setError("");
   };
 
-  // 🔥 ONLY THIS PART CHANGED
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    const formData = new FormData();
-    formData.append("contact_no", form.email);
-    formData.append("password", form.password);
-
-    const res = await authService.adminLogin(formData);
-
-    console.log("API Response:", res);
-
-    if (res.status === 200) {
-      const token = res.data?.token;
-
-      // ✅ IMPORTANT FIX
-      if (token) {
-        document.cookie = `adminToken=${token}; path=/`;
-        localStorage.setItem("adminToken", token);
-      }
-
-      router.push("/admin");
+    // 🔥 10 digit validation
+    if (!/^\d{10}$/.test(form.email)) {
+      setContactError("Enter valid 10-digit number");
+      return;
     }
-  } catch (err: any) {
-  console.log("Login Error:", err);
 
-  // 🔥 backend ka real message show karo
-  if (err?.message) {
-    setError(err.message);
-  } else {
-    setError("Invalid credentials");
-  }
-}
-};
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+      formData.append("contact_no", form.email);
+      formData.append("password", form.password);
+
+      const res = await authService.adminLogin(formData);
+
+      if (res.status === 200) {
+        const token = res.data?.token;
+
+        if (token) {
+          document.cookie = `adminToken=${token}; path=/`;
+        }
+
+        router.push("/admin");
+      }
+    } catch (err: any) {
+      if (err?.message) {
+        setError(err.message);
+      } else {
+        setError("Invalid credentials");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-teal-50 p-4">
@@ -423,8 +268,16 @@ export default function LoginPage() {
               onChange={handleChange}
               placeholder="Enter contact number"
               required
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
+              maxLength={10}
+              className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${
+                contactError
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-slate-200 focus:ring-teal-500/50 focus:border-teal-500"
+              }`}
             />
+            {contactError && (
+              <p className="text-red-500 text-xs mt-1">{contactError}</p>
+            )}
           </div>
 
           {/* PASSWORD */}
@@ -468,9 +321,19 @@ export default function LoginPage() {
           {/* SUBMIT */}
           <button
             type="submit"
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all"
+            disabled={loading}
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-60"
           >
-            Login <ArrowRight className="w-4 h-4" />
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Logging in...
+              </>
+            ) : (
+              <>
+                Login <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </form>
       </div>
