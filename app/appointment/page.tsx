@@ -86,6 +86,12 @@ export default function AppointmentWizard() {
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [customAlert, setCustomAlert] = useState<string | null>(null);
+
+    const showCustomAlert = (msg: string) => {
+        setCustomAlert(msg);
+        setTimeout(() => setCustomAlert(null), 4000);
+    };
 
     // --- EXISTING PATIENT MODULE STATES ---
     const [existingPhone, setExistingPhone] = useState("");
@@ -119,6 +125,54 @@ export default function AppointmentWizard() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validations
+        if (currentStep === 1 && formData.patientType === "new") {
+            if (formData.phone.length !== 10) {
+                showCustomAlert("Please enter a valid 10-digit mobile number.");
+                return;
+            }
+            if (formData.dob) {
+                const dobDate = new Date(formData.dob);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (dobDate > today) {
+                    showCustomAlert("Date of birth cannot be in the future.");
+                    return;
+                }
+            }
+        }
+
+        if (currentStep === 2) {
+            if (!formData.consultationMode) {
+                showCustomAlert("Please select a consultation mode.");
+                return;
+            }
+        }
+
+        if (currentStep === 3) {
+            if (!formData.stateId || !formData.cityId || !formData.clinicId || !formData.doctorId) {
+                showCustomAlert("Please select state, city, clinic, and doctor to proceed.");
+                return;
+            }
+        }
+
+        if (currentStep === 4) {
+            if (!formData.date || !formData.time) {
+                showCustomAlert("Please select appointment date and time.");
+                return;
+            }
+            if (formData.date) {
+                const apptDate = new Date(formData.date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (apptDate < today) {
+                    showCustomAlert("Appointment date cannot be in the past.");
+                    return;
+                }
+            }
+        }
+
         if (currentStep < 6) {
             if (currentStep === 5 && !formData.appointmentId) {
                 updateFields({ appointmentId: generateAppointmentId() });
@@ -160,7 +214,7 @@ export default function AppointmentWizard() {
                                 }).then(() => {
                                     setIsSubmitted(true);
                                 }).catch((err: any) => {
-                                    alert("Payment verification failed. Please contact support.");
+                                    showCustomAlert("Payment verification failed. Please contact support.");
                                     console.error(err);
                                 });
                             },
@@ -175,7 +229,7 @@ export default function AppointmentWizard() {
                         };
                         const rzp = new (window as any).Razorpay(options);
                         rzp.on('payment.failed', function (response: any) {
-                            alert("Payment Failed. You can click 'Confirm Appointment' again to retry.");
+                            showCustomAlert("Payment Failed. You can click 'Confirm Appointment' again to retry.");
                         });
                         rzp.open();
                     } else {
@@ -199,6 +253,22 @@ export default function AppointmentWizard() {
     return (
         <div className="min-h-screen bg-medical-slate-bg py-12 md:py-20 font-sans">
             <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+            
+            {customAlert && (
+                <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
+                    <div className="bg-white border-l-4 border-red-500 shadow-xl rounded-xl p-4 flex items-start gap-3 max-w-md">
+                        <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <h4 className="text-sm font-bold text-slate-800">Action Required</h4>
+                            <p className="text-xs text-slate-500 mt-1">{customAlert}</p>
+                        </div>
+                        <button type="button" onClick={() => setCustomAlert(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="container mx-auto px-6 max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-8">
                     <div>
@@ -613,7 +683,7 @@ const Step1 = ({
                                 </p>
                             )}
                         </div>
-                        <Input label="Date of Birth" type="date" value={formData.dob} onChange={(val) => updateFields({ dob: val })} required />
+                        <Input label="Date of Birth" type="date" value={formData.dob} onChange={(val) => updateFields({ dob: val })} required max={new Date().toISOString().split("T")[0]} />
                     </div>
                 </div>
             ) : (
@@ -1324,6 +1394,7 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => (
                         value={formData.date}
                         onChange={(e) => updateFields({ date: e.target.value })}
                         required
+                        min={new Date().toISOString().split("T")[0]}
                     />
                 </div>
             </div>
@@ -1525,7 +1596,26 @@ const SummaryCard = ({ title, icon: Icon, onEdit, rows }: SummaryCardProps) => (
 const SuccessCard = ({ formData }: { formData: FormData }) => {
     return (
         <div className="min-h-screen bg-medical-slate-bg flex items-center justify-center p-6 animate-in zoom-in-95 duration-500 font-sans">
-            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden">
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #print-section, #print-section * {
+                        visibility: visible;
+                    }
+                    #print-section {
+                        display: block !important;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        padding: 40px;
+                        background: white;
+                    }
+                }
+            `}</style>
+            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden print:hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-50 rounded-full translate-x-20 -translate-y-20 -z-1" />
 
                 <div className="text-center space-y-6 mb-12 relative z-10">
@@ -1562,13 +1652,52 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 print:hidden">
                     <Link href="/" className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
                         Go to Portal
                     </Link>
-                    <button className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
-                        Print Slip
+                    <button onClick={() => window.print()} className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
+                        Download / Print Slip
                     </button>
+                </div>
+            </div>
+
+            <div id="print-section" className="hidden">
+                <div className="text-center border-b-2 border-teal-600 pb-6 mb-6">
+                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Dr Mahesh Chandra Kandpal</h1>
+                    <p className="text-sm text-slate-500">Premium Healthcare & Consultations</p>
+                </div>
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <p className="text-sm text-slate-500">Patient Name</p>
+                        <p className="text-xl font-bold">{formData.fullName || "N/A"}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-slate-500">Date & Time</p>
+                        <p className="text-xl font-bold text-teal-700">{formData.date} at {formData.time}</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Appointment ID</p>
+                        <p className="font-bold">{formData.appointmentId}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Patient ID</p>
+                        <p className="font-bold">{formData.patientId}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Consultation Mode</p>
+                        <p className="font-bold capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Clinic/Location</p>
+                        <p className="font-bold">{formData.clinic || "Online"}, {formData.city || "N/A"}</p>
+                    </div>
+                </div>
+                <div className="border-t-2 border-dashed border-slate-200 pt-6 text-center">
+                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Dr Mahesh Chandra Kandpal</p>
+                    <p className="text-xs text-slate-500">Please arrive 15 minutes early for in-person visits.</p>
                 </div>
             </div>
         </div>
@@ -1591,7 +1720,26 @@ const Detail = ({ label, value, accent }: DetailProps) => (
 const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClose: () => void }) => {
     return (
         <div className="min-h-screen bg-medical-slate-bg flex items-center justify-center p-6 animate-in zoom-in-95 duration-500 font-sans">
-            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden">
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #print-section-updated, #print-section-updated * {
+                        visibility: visible;
+                    }
+                    #print-section-updated {
+                        display: block !important;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        padding: 40px;
+                        background: white;
+                    }
+                }
+            `}</style>
+            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden print:hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-50 rounded-full translate-x-20 -translate-y-20 -z-1" />
 
                 <div className="text-center space-y-6 mb-12 relative z-10">
@@ -1628,13 +1776,52 @@ const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClos
                     </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 print:hidden">
                     <button onClick={onClose} className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
                         Go to Portal
                     </button>
-                    <button className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
-                        Print Slip
+                    <button onClick={() => window.print()} className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
+                        Download / Print Slip
                     </button>
+                </div>
+            </div>
+
+            <div id="print-section-updated" className="hidden">
+                <div className="text-center border-b-2 border-teal-600 pb-6 mb-6">
+                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Dr Mahesh Chandra Kandpal</h1>
+                    <p className="text-sm text-slate-500">Premium Healthcare & Consultations</p>
+                </div>
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <p className="text-sm text-slate-500">Patient Name</p>
+                        <p className="text-xl font-bold">{appointment.fullName || "N/A"}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-slate-500">Date & Time</p>
+                        <p className="text-xl font-bold text-teal-700">{appointment.date} at {appointment.time}</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Appointment ID</p>
+                        <p className="font-bold">{appointment.id}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Patient ID</p>
+                        <p className="font-bold">{appointment.patientId}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Consultation Mode</p>
+                        <p className="font-bold capitalize">{appointment.consultationMode === "video" ? "Online Video" : appointment.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Clinic/Location</p>
+                        <p className="font-bold">{appointment.clinic || "Online"}, {appointment.city || "N/A"}</p>
+                    </div>
+                </div>
+                <div className="border-t-2 border-dashed border-slate-200 pt-6 text-center">
+                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Dr Mahesh Chandra Kandpal</p>
+                    <p className="text-xs text-slate-500">Please arrive 15 minutes early for in-person visits.</p>
                 </div>
             </div>
         </div>
