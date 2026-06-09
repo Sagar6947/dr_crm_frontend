@@ -119,6 +119,54 @@ export default function AppointmentWizard() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validations
+        if (currentStep === 1 && formData.patientType === "new") {
+            if (formData.phone.length !== 10) {
+                alert("Please enter a valid 10-digit mobile number.");
+                return;
+            }
+            if (formData.dob) {
+                const dobDate = new Date(formData.dob);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (dobDate > today) {
+                    alert("Date of birth cannot be in the future.");
+                    return;
+                }
+            }
+        }
+
+        if (currentStep === 2) {
+            if (!formData.consultationMode) {
+                alert("Please select a consultation mode.");
+                return;
+            }
+        }
+
+        if (currentStep === 3) {
+            if (!formData.stateId || !formData.cityId || !formData.clinicId || !formData.doctorId) {
+                alert("Please select state, city, clinic, and doctor to proceed.");
+                return;
+            }
+        }
+
+        if (currentStep === 4) {
+            if (!formData.date || !formData.time) {
+                alert("Please select appointment date and time.");
+                return;
+            }
+            if (formData.date) {
+                const apptDate = new Date(formData.date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (apptDate < today) {
+                    alert("Appointment date cannot be in the past.");
+                    return;
+                }
+            }
+        }
+
         if (currentStep < 6) {
             if (currentStep === 5 && !formData.appointmentId) {
                 updateFields({ appointmentId: generateAppointmentId() });
@@ -613,7 +661,7 @@ const Step1 = ({
                                 </p>
                             )}
                         </div>
-                        <Input label="Date of Birth" type="date" value={formData.dob} onChange={(val) => updateFields({ dob: val })} required />
+                        <Input label="Date of Birth" type="date" value={formData.dob} onChange={(val) => updateFields({ dob: val })} required max={new Date().toISOString().split("T")[0]} />
                     </div>
                 </div>
             ) : (
@@ -1324,6 +1372,7 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => (
                         value={formData.date}
                         onChange={(e) => updateFields({ date: e.target.value })}
                         required
+                        min={new Date().toISOString().split("T")[0]}
                     />
                 </div>
             </div>
@@ -1525,7 +1574,26 @@ const SummaryCard = ({ title, icon: Icon, onEdit, rows }: SummaryCardProps) => (
 const SuccessCard = ({ formData }: { formData: FormData }) => {
     return (
         <div className="min-h-screen bg-medical-slate-bg flex items-center justify-center p-6 animate-in zoom-in-95 duration-500 font-sans">
-            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden">
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #print-section, #print-section * {
+                        visibility: visible;
+                    }
+                    #print-section {
+                        display: block !important;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        padding: 40px;
+                        background: white;
+                    }
+                }
+            `}</style>
+            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden print:hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-50 rounded-full translate-x-20 -translate-y-20 -z-1" />
 
                 <div className="text-center space-y-6 mb-12 relative z-10">
@@ -1562,13 +1630,52 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 print:hidden">
                     <Link href="/" className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
                         Go to Portal
                     </Link>
-                    <button className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
-                        Print Slip
+                    <button onClick={() => window.print()} className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
+                        Download / Print Slip
                     </button>
+                </div>
+            </div>
+
+            <div id="print-section" className="hidden">
+                <div className="text-center border-b-2 border-teal-600 pb-6 mb-6">
+                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Dr Mahesh Chandra Kandpal</h1>
+                    <p className="text-sm text-slate-500">Premium Healthcare & Consultations</p>
+                </div>
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <p className="text-sm text-slate-500">Patient Name</p>
+                        <p className="text-xl font-bold">{formData.fullName || "N/A"}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-slate-500">Date & Time</p>
+                        <p className="text-xl font-bold text-teal-700">{formData.date} at {formData.time}</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Appointment ID</p>
+                        <p className="font-bold">{formData.appointmentId}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Patient ID</p>
+                        <p className="font-bold">{formData.patientId}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Consultation Mode</p>
+                        <p className="font-bold capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Clinic/Location</p>
+                        <p className="font-bold">{formData.clinic || "Online"}, {formData.city || "N/A"}</p>
+                    </div>
+                </div>
+                <div className="border-t-2 border-dashed border-slate-200 pt-6 text-center">
+                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Dr Mahesh Chandra Kandpal</p>
+                    <p className="text-xs text-slate-500">Please arrive 15 minutes early for in-person visits.</p>
                 </div>
             </div>
         </div>
@@ -1591,7 +1698,26 @@ const Detail = ({ label, value, accent }: DetailProps) => (
 const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClose: () => void }) => {
     return (
         <div className="min-h-screen bg-medical-slate-bg flex items-center justify-center p-6 animate-in zoom-in-95 duration-500 font-sans">
-            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden">
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #print-section-updated, #print-section-updated * {
+                        visibility: visible;
+                    }
+                    #print-section-updated {
+                        display: block !important;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        padding: 40px;
+                        background: white;
+                    }
+                }
+            `}</style>
+            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden print:hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-50 rounded-full translate-x-20 -translate-y-20 -z-1" />
 
                 <div className="text-center space-y-6 mb-12 relative z-10">
@@ -1628,13 +1754,52 @@ const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClos
                     </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 print:hidden">
                     <button onClick={onClose} className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
                         Go to Portal
                     </button>
-                    <button className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
-                        Print Slip
+                    <button onClick={() => window.print()} className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
+                        Download / Print Slip
                     </button>
+                </div>
+            </div>
+
+            <div id="print-section-updated" className="hidden">
+                <div className="text-center border-b-2 border-teal-600 pb-6 mb-6">
+                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Dr Mahesh Chandra Kandpal</h1>
+                    <p className="text-sm text-slate-500">Premium Healthcare & Consultations</p>
+                </div>
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <p className="text-sm text-slate-500">Patient Name</p>
+                        <p className="text-xl font-bold">{appointment.fullName || "N/A"}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-slate-500">Date & Time</p>
+                        <p className="text-xl font-bold text-teal-700">{appointment.date} at {appointment.time}</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Appointment ID</p>
+                        <p className="font-bold">{appointment.id}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Patient ID</p>
+                        <p className="font-bold">{appointment.patientId}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Consultation Mode</p>
+                        <p className="font-bold capitalize">{appointment.consultationMode === "video" ? "Online Video" : appointment.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                    </div>
+                    <div className="p-4 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Clinic/Location</p>
+                        <p className="font-bold">{appointment.clinic || "Online"}, {appointment.city || "N/A"}</p>
+                    </div>
+                </div>
+                <div className="border-t-2 border-dashed border-slate-200 pt-6 text-center">
+                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Dr Mahesh Chandra Kandpal</p>
+                    <p className="text-xs text-slate-500">Please arrive 15 minutes early for in-person visits.</p>
                 </div>
             </div>
         </div>
