@@ -77,7 +77,7 @@ const INITIAL_DATA: FormData = {
     reason: "",
     conditions: "",
     medications: "",
-    paymentMethod: "cash",
+    paymentMethod: "razorpay",
 };
 
 export default function AppointmentWizard() {
@@ -1448,28 +1448,14 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="text-center">
             <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 6: Payment Portal</h2>
-            <p className="text-slate-500 text-sm">Select your preferred method for settlement.</p>
+            <p className="text-slate-500 text-sm">Please proceed with secure digital payment to confirm your booking.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <button
-                type="button"
-                onClick={() => updateFields({ paymentMethod: "cash" })}
-                className={`p-10 rounded-[36px] border-2 transition-all flex flex-col items-center gap-6 group ${formData.paymentMethod === "cash" ? "border-medical-teal bg-teal-50/30" : "border-slate-50 hover:border-teal-100"}`}
-            >
-                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all ${formData.paymentMethod === "cash" ? "bg-medical-teal text-white shadow-xl shadow-teal-200" : "bg-slate-100 text-slate-400 group-hover:bg-teal-50"}`}>
-                    <Hospital className="w-8 h-8" />
-                </div>
-                <div className="text-center">
-                    <h4 className="font-bold text-slate-900 text-lg mb-1">First Visit & Pay</h4>
-                    <p className="text-xs text-slate-500">Settle your account at the clinic front desk upon arrival.</p>
-                </div>
-            </button>
-
+        <div className="flex justify-center">
             <button
                 type="button"
                 onClick={() => updateFields({ paymentMethod: "razorpay" })}
-                className={`p-10 rounded-[36px] border-2 transition-all flex flex-col items-center gap-6 group ${formData.paymentMethod === "razorpay" ? "border-medical-teal bg-teal-50/30" : "border-slate-50 hover:border-teal-100"}`}
+                className={`p-10 w-full max-w-md rounded-[36px] border-2 transition-all flex flex-col items-center gap-6 group ${formData.paymentMethod === "razorpay" ? "border-medical-teal bg-teal-50/30" : "border-slate-50 hover:border-teal-100"}`}
             >
                 <div className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all ${formData.paymentMethod === "razorpay" ? "bg-medical-teal text-white shadow-xl shadow-teal-200" : "bg-slate-100 text-slate-400 group-hover:bg-teal-50"}`}>
                     <CreditCard className="w-8 h-8" />
