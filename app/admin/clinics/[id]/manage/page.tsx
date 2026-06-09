@@ -48,7 +48,7 @@ function AssignDoctorModal({
             }
         };
         load();
-        return () => controller.abort();
+        return () => controller.abort("Component unmounted");
     }, []);
 
     const filtered = allDoctors.filter(d =>

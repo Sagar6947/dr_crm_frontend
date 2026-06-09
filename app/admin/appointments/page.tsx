@@ -37,7 +37,7 @@ export default function AppointmentsPage() {
     const abortRef = useRef<AbortController | null>(null);
 
    const fetchAppointments = async (page = 1, search = debouncedSearch) => {
-        if (abortRef.current) abortRef.current.abort();
+        if (abortRef.current) abortRef.current.abort("Cancel previous request");
         const controller = new AbortController();
         abortRef.current = controller;
 
@@ -65,24 +65,22 @@ export default function AppointmentsPage() {
             if (abortRef.current === controller) setIsLoading(false);
         }
     };
-    // Debounce search
+    // 1. Debounce search & reset pagination if search changes
     useEffect(() => {
-        const t = setTimeout(() => setDebouncedSearch(search), 500);
+        const t = setTimeout(() => {
+            if (debouncedSearch !== search) {
+                setDebouncedSearch(search);
+                setPagination(prev => prev.current_page === 1 ? prev : { ...prev, current_page: 1 });
+            }
+        }, 500);
         return () => clearTimeout(t);
-    }, [search]);
+    }, [search, debouncedSearch]);
 
+    // 2. Fetch data when page or search changes
     useEffect(() => {
-        setPagination(prev => ({ ...prev, current_page: 1 }));
-        fetchAppointments(1, debouncedSearch);
-    }, [debouncedSearch]);
-
-    useEffect(() => {
-        fetchAppointments(pagination.current_page);
-    }, [pagination.current_page]);
-
-    useEffect(() => {
-        return () => { if (abortRef.current) abortRef.current.abort(); };
-    }, []);
+        fetchAppointments(pagination.current_page, debouncedSearch);
+        return () => { if (abortRef.current) abortRef.current.abort("Component unmounted or page changed"); };
+    }, [pagination.current_page, debouncedSearch]);
 
     // Client-side status filter (since API may not support it)
     const filtered = statusFilter === "All"
@@ -170,6 +168,7 @@ export default function AppointmentsPage() {
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Clinic</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Date & Time</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden lg:table-cell">Mode</th>
+                                    <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Payment</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Status</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Action</th>
                                 </tr>
@@ -218,6 +217,13 @@ export default function AppointmentsPage() {
                                                 <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg font-medium capitalize">
                                                     {apt.consultation_mode || "—"}
                                                 </span>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="text-sm font-semibold capitalize text-slate-700">
+                                                    {(apt.payment?.mode || apt.payment_mode) === 'online' ? 'Razorpay' : ((apt.payment?.mode || apt.payment_mode) === 'pay_at_visit' ? 'Clinic' : ((apt.payment?.mode || apt.payment_mode) || 'Cash'))}
+                                                    {(apt.payment?.amount || apt.payment_amount) ? ` (₹${Number(apt.payment?.amount || apt.payment_amount).toFixed(0)})` : ''}
+                                                </div>
+                                                <div className={`text-[10px] uppercase tracking-wider font-bold mt-0.5 ${(apt.payment?.status || apt.payment_status) === 'completed' ? 'text-green-600' : 'text-orange-500'}`}>{(apt.payment?.status || apt.payment_status) || 'Pending'}</div>
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg capitalize ${cfg.color}`}>

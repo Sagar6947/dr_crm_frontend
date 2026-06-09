@@ -198,6 +198,8 @@ import {
     Hospital, FileText, CheckCircle2, XCircle, AlertCircle
 } from "lucide-react";
 
+import { appointmentService } from "@/lib/api";
+
 const statusConfig: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
     confirmed:  { color: "text-teal-700",   bg: "bg-teal-50",   icon: <CheckCircle2 className="w-4 h-4" /> },
     scheduled:  { color: "text-teal-700",   bg: "bg-teal-50",   icon: <CheckCircle2 className="w-4 h-4" /> },
@@ -208,11 +210,27 @@ const statusConfig: Record<string, { color: string; bg: string; icon: React.Reac
 
 export default function AppointmentDetailPage() {
     const [apt, setApt] = useState<any>(null);
+    const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
 
     useEffect(() => {
         const stored = sessionStorage.getItem("apt_detail");
         if (stored) setApt(JSON.parse(stored));
     }, []);
+
+    const handleUpdatePaymentStatus = async (newStatus: string) => {
+        if (!apt?.id) return;
+        setIsUpdatingPayment(true);
+        try {
+            await appointmentService.updatePaymentStatus(apt.id, newStatus);
+            setApt({ ...apt, payment_status: newStatus });
+            sessionStorage.setItem("apt_detail", JSON.stringify({ ...apt, payment_status: newStatus }));
+        } catch (error) {
+            console.error("Failed to update payment status", error);
+            alert("Failed to update payment status. Please try again.");
+        } finally {
+            setIsUpdatingPayment(false);
+        }
+    };
 
     if (!apt) {
         return (
@@ -287,13 +305,31 @@ export default function AppointmentDetailPage() {
                                     { icon: <Clock className="w-4 h-4" />,    label: "Date",    value: apt.appointment_date },
                                     { icon: <Clock className="w-4 h-4" />,    label: "Time",    value: apt.appointment_time },
                                     { icon: <FileText className="w-4 h-4" />, label: "Mode",    value: apt.consultation_mode || "—" },
-                                    { icon: <FileText className="w-4 h-4" />, label: "Payment", value: apt.payment_mode?.replace(/_/g, " ") || "—" },
+                                    { icon: <FileText className="w-4 h-4" />, label: "Payment Mode", value: ((apt.payment?.mode || apt.payment_mode) === 'online' ? 'Razorpay' : ((apt.payment?.mode || apt.payment_mode) === 'pay_at_visit' ? 'Clinic' : ((apt.payment?.mode || apt.payment_mode) || "—"))) + ((apt.payment?.amount || apt.payment_amount) ? ` (₹${Number(apt.payment?.amount || apt.payment_amount).toFixed(0)})` : '') },
                                 ].map((item, i) => (
                                     <div key={i} className="bg-slate-50 rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">{item.icon} {item.label}</div>
                                         <div className="font-semibold text-slate-800 text-sm capitalize">{item.value}</div>
                                     </div>
                                 ))}
+                            </div>
+                            
+                            <div className="mt-4 p-4 border border-slate-100 rounded-xl bg-slate-50 flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs text-slate-400 mb-1 font-bold uppercase tracking-wider">Payment Status</p>
+                                    <p className={`text-sm font-bold capitalize ${(apt.payment?.status || apt.payment_status) === 'completed' ? 'text-green-600' : 'text-orange-500'}`}>
+                                        {(apt.payment?.status || apt.payment_status) || 'Pending'}
+                                    </p>
+                                </div>
+                                {(!(apt.payment?.status || apt.payment_status) || (apt.payment?.status || apt.payment_status) === 'pending') && (
+                                    <button 
+                                        onClick={() => handleUpdatePaymentStatus('completed')}
+                                        disabled={isUpdatingPayment}
+                                        className="text-xs bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                                    >
+                                        {isUpdatingPayment ? 'Updating...' : 'Mark as Paid'}
+                                    </button>
+                                )}
                             </div>
                         </div>
 

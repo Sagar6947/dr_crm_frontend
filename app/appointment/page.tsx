@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import {
     User,
     CheckCircle2,
@@ -25,7 +26,7 @@ import {
     Trash2,
     X,
 } from "lucide-react";
-import { clinicService, geoService, appointmentService } from "@/lib/api";
+import { clinicService, geoService, appointmentService, patientService } from "@/lib/api";
 
 // --- MOCK DATA ---
 const TIME_SLOTS = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
@@ -52,7 +53,7 @@ type FormData = {
     reason: string;
     conditions: string;
     medications: string;
-    paymentMethod: "cash" | "qr";
+    paymentMethod: "cash" | "razorpay";
 };
 
 const INITIAL_DATA: FormData = {
@@ -99,69 +100,9 @@ export default function AppointmentWizard() {
     const [rescheduledSlipAppointment, setRescheduledSlipAppointment] = useState<any>(null);
     const [cancellationConfirmId, setCancellationConfirmId] = useState<string | null>(null);
     const [existingPatientName, setExistingPatientName] = useState("Gourav Jain");
-    const [appointments, setAppointments] = useState([
-        {
-            id: "APT-8877-2052",
-            patientId: "CRM-2025-7138",
-            fullName: "Gourav Jain",
-            phone: "9340788649",
-            stateName: "Madhya Pradesh",
-            city: "Bhopal",
-            clinic: "S World test",
-            doctorName: "Dr Jane Doe Updated",
-            date: "2026-05-29",
-            time: "10:00 AM",
-            consultationMode: "clinic",
-            status: "Scheduled",
-            paymentMethod: "cash",
-        },
-        {
-            id: "APT-20260411-0009",
-            patientId: "CRM-2025-7138",
-            fullName: "Gourav Jain",
-            phone: "9340788649",
-            stateName: "Madhya Pradesh",
-            city: "Bhopal",
-            clinic: "World Health Clinic Office road bhopal kolar road",
-            doctorName: "Dr Jane Doe Updated",
-            date: "2026-06-05",
-            time: "02:00 PM",
-            consultationMode: "clinic",
-            status: "Scheduled",
-            paymentMethod: "cash",
-        },
-        {
-            id: "APT-20260409-0007",
-            patientId: "CRM-2025-7138",
-            fullName: "Gourav Jain",
-            phone: "9340788649",
-            stateName: "Madhya Pradesh",
-            city: "Bhopal",
-            clinic: "World Health Clinic Office road bhopal kolar road",
-            doctorName: "Dr gourav dubey",
-            date: "2026-04-11",
-            time: "11:00 AM",
-            consultationMode: "clinic",
-            status: "Completed",
-            paymentMethod: "cash",
-        },
-        {
-            id: "APT-20260403-0006",
-            patientId: "CRM-2025-7138",
-            fullName: "Gourav Jain",
-            phone: "9340788649",
-            stateName: "Madhya Pradesh",
-            city: "Bhopal",
-            clinic: "S World test",
-            doctorName: "Dr gourav dubey",
-            date: "2026-04-04",
-            time: "06:00 PM",
-            consultationMode: "clinic",
-            status: "Completed",
-            paymentMethod: "cash",
-        }
-    ]);
-    
+    const [appointments, setAppointments] = useState<any[]>([]);
+    const [loadingAppointments, setLoadingAppointments] = useState(false);
+
 
     useEffect(() => {
         if (formData.patientType === "new" && !formData.patientId) {
@@ -197,11 +138,50 @@ export default function AppointmentWizard() {
                 consultation_mode: formData.consultationMode,
                 chronic_condition: formData.conditions || "None",
                 regular_medications: formData.medications || "None",
-                payment_mode: formData.paymentMethod === "cash" ? "pay_at_visit" : "qr_payment",
+                payment_mode: formData.paymentMethod === "cash" ? "pay_at_visit" : "online",
             };
 
             appointmentService.book(payload)
-                .then(() => setIsSubmitted(true))
+                .then((res: any) => {
+                    if (formData.paymentMethod === "razorpay" && res.data && res.data.razorpay_order_id) {
+                        const options = {
+                            key: res.data.key_id,
+                            amount: res.data.amount,
+                            currency: "INR",
+                            name: "Dr Mahesh Chandra Kandpal",
+                            description: "Consultation Fee",
+                            order_id: res.data.razorpay_order_id,
+                            handler: function (response: any) {
+                                appointmentService.verifyRazorpayPayment({
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                    appointment_code: res.data.appointment_code
+                                }).then(() => {
+                                    setIsSubmitted(true);
+                                }).catch((err: any) => {
+                                    alert("Payment verification failed. Please contact support.");
+                                    console.error(err);
+                                });
+                            },
+                            prefill: {
+                                name: formData.fullName,
+                                email: formData.email,
+                                contact: formData.phone
+                            },
+                            theme: {
+                                color: "#0d9488"
+                            }
+                        };
+                        const rzp = new (window as any).Razorpay(options);
+                        rzp.on('payment.failed', function (response: any) {
+                            alert("Payment Failed. You can click 'Confirm Appointment' again to retry.");
+                        });
+                        rzp.open();
+                    } else {
+                        setIsSubmitted(true);
+                    }
+                })
                 .catch((err) => {
                     console.error(err);
                 });
@@ -218,6 +198,7 @@ export default function AppointmentWizard() {
 
     return (
         <div className="min-h-screen bg-medical-slate-bg py-12 md:py-20 font-sans">
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" />
             <div className="container mx-auto px-6 max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-8">
                     <div>
@@ -372,7 +353,7 @@ interface StepProps {
     formData: FormData;
     updateFields: (fields: Partial<FormData>) => void;
     generatePatientId?: () => string;
-    
+
     // Existing patient states
     existingPhone?: string;
     setExistingPhone?: (phone: string) => void;
@@ -444,33 +425,34 @@ const Step1 = ({
     formData,
     updateFields,
     existingPhone = "",
-    setExistingPhone = () => {},
+    setExistingPhone = () => { },
     otpSent = false,
-    setOtpSent = () => {},
+    setOtpSent = () => { },
     otpCode = "",
-    setOtpCode = () => {},
+    setOtpCode = () => { },
     otpError = "",
-    setOtpError = () => {},
+    setOtpError = () => { },
     isOtpVerified = false,
-    setIsOtpVerified = () => {},
+    setIsOtpVerified = () => { },
     activeTab = "upcoming",
-    setActiveTab = () => {},
+    setActiveTab = () => { },
     reschedulingAppointmentId = null,
-    setReschedulingAppointmentId = () => {},
+    setReschedulingAppointmentId = () => { },
     rescheduleDate = "",
-    setRescheduleDate = () => {},
+    setRescheduleDate = () => { },
     rescheduleTime = "",
-    setRescheduleTime = () => {},
-    setRescheduledSlipAppointment = () => {},
+    setRescheduleTime = () => { },
+    setRescheduledSlipAppointment = () => { },
     cancellationConfirmId = null,
-    setCancellationConfirmId = () => {},
+    setCancellationConfirmId = () => { },
     existingPatientName = "Gourav Jain",
-    setExistingPatientName = () => {},
+    setExistingPatientName = () => { },
     appointments = [],
-    setAppointments = () => {},
+    setAppointments = () => { },
 }: StepProps) => {
     const [phoneError, setPhoneError] = useState("");
     const [localOtpError, setLocalOtpError] = useState("");
+    const [loadingAppointments, setLoadingAppointments] = useState(false);
 
     const handlePhone = (val: string) => {
         const digits = val.replace(/\D/g, "").slice(0, 10);
@@ -487,30 +469,56 @@ const Step1 = ({
         setExistingPhone(digits);
     };
 
-    const handleSendOtp = () => {
+    const handleSendOtp = async () => {
         if (existingPhone.length !== 10) {
             setPhoneError("Please enter a valid 10-digit mobile number");
             return;
         }
         setPhoneError("");
-        setOtpSent(true);
-        setOtpError("");
+        try {
+            await patientService.sendOtp(existingPhone);
+            setOtpSent(true);
+            setOtpError("");
+        } catch (error) {
+            setPhoneError("Failed to send OTP. Please try again.");
+        }
     };
 
-    const handleVerifyOtp = () => {
+    const fetchAppointments = async (phone: string) => {
+        try {
+            setLoadingAppointments(true);
+            const res = await appointmentService.getByPhone(phone);
+            setAppointments(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch appointments", error);
+        } finally {
+            setLoadingAppointments(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
         if (otpCode.length !== 6) {
             setLocalOtpError("OTP must be exactly 6 digits");
             return;
         }
-        setLocalOtpError("");
-        setIsOtpVerified(true);
-        updateFields({ phone: existingPhone });
+        try {
+            const res = await patientService.verifyOtp(existingPhone, otpCode);
+            setLocalOtpError("");
+            setIsOtpVerified(true);
+            updateFields({ phone: existingPhone });
+            if (res.data?.patientName) {
+                setExistingPatientName(res.data.patientName);
+            }
+
+            // Fetch appointments
+            fetchAppointments(existingPhone);
+        } catch (error) {
+            setLocalOtpError("Invalid OTP. Please try again.");
+        }
     };
 
     const filteredAppts = appointments.filter((appt) => {
-        const matchesPhone = appt.phone === existingPhone || existingPhone === "9340788649" || appt.phone === "9340788649";
-        if (!matchesPhone) return false;
-
+        // Appts are already fetched for this phone, just filter by status
         if (activeTab === "upcoming") {
             return appt.status === "Scheduled";
         } else {
@@ -518,13 +526,18 @@ const Step1 = ({
         }
     });
 
-    const handleCancelAppointment = (id: string) => {
-        setAppointments((prev) =>
-            prev.map((appt) =>
-                appt.id === id ? { ...appt, status: "Cancelled" } : appt
-            )
-        );
-        setCancellationConfirmId(null);
+    const handleCancelAppointment = async (id: string) => {
+        try {
+            await appointmentService.cancelAppointment(id);
+            setAppointments((prev) =>
+                prev.map((appt) =>
+                    appt.id === id ? { ...appt, status: "Cancelled" } : appt
+                )
+            );
+            setCancellationConfirmId(null);
+        } catch (error) {
+            console.error("Failed to cancel appointment", error);
+        }
     };
 
     const handleStartReschedule = (appt: any) => {
@@ -533,26 +546,31 @@ const Step1 = ({
         setRescheduleTime(appt.time);
     };
 
-    const handleSaveReschedule = (id: string) => {
+    const handleSaveReschedule = async (id: string) => {
         if (!rescheduleDate || !rescheduleTime) return;
 
-        setAppointments((prev) => {
-            const updated = prev.map((appt) =>
-                appt.id === id
-                    ? { ...appt, date: rescheduleDate, time: rescheduleTime }
-                    : appt
-            );
+        try {
+            await appointmentService.rescheduleAppointment(id, rescheduleDate, rescheduleTime);
+            setAppointments((prev) => {
+                const updated = prev.map((appt) =>
+                    appt.id === id
+                        ? { ...appt, date: rescheduleDate, time: rescheduleTime, status: "Scheduled" }
+                        : appt
+                );
 
-            const updatedAppt = updated.find((appt) => appt.id === id);
-            if (updatedAppt) {
-                setTimeout(() => {
-                    setRescheduledSlipAppointment(updatedAppt);
-                }, 100);
-            }
-            return updated;
-        });
+                const updatedAppt = updated.find((appt) => appt.id === id);
+                if (updatedAppt) {
+                    setTimeout(() => {
+                        setRescheduledSlipAppointment(updatedAppt);
+                    }, 100);
+                }
+                return updated;
+            });
 
-        setReschedulingAppointmentId(null);
+            setReschedulingAppointmentId(null);
+        } catch (error) {
+            console.error("Failed to reschedule appointment", error);
+        }
     };
 
     return (
@@ -640,7 +658,7 @@ const Step1 = ({
                                         <CheckCircle2 className="w-5 h-5 text-medical-teal shrink-0 mt-0.5" />
                                         <div className="space-y-0.5">
                                             <p className="text-xs font-bold text-medical-teal">OTP Sent Successfully</p>
-                                            <p className="text-[11px] text-medical-teal/80">We have sent a verification code to +91 {existingPhone.slice(0,5)}-{existingPhone.slice(5)}</p>
+                                            <p className="text-[11px] text-medical-teal/80">We have sent a verification code to +91 {existingPhone.slice(0, 5)}-{existingPhone.slice(5)}</p>
                                         </div>
                                     </div>
 
@@ -740,11 +758,10 @@ const Step1 = ({
                                             <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-50">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-bold text-slate-800">{appt.id}</span>
-                                                    <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
-                                                        appt.status === "Scheduled" ? "bg-teal-50 text-medical-teal border-teal-100" :
-                                                        appt.status === "Completed" ? "bg-green-50 text-green-600 border-green-100" :
-                                                        "bg-red-50 text-red-500 border-red-100"
-                                                    }`}>
+                                                    <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${appt.status === "Scheduled" ? "bg-teal-50 text-medical-teal border-teal-100" :
+                                                            appt.status === "Completed" ? "bg-green-50 text-green-600 border-green-100" :
+                                                                "bg-red-50 text-red-500 border-red-100"
+                                                        }`}>
                                                         {appt.status}
                                                     </span>
                                                 </div>
@@ -979,7 +996,7 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
     useEffect(() => {
         geoService.getStates()
             .then(res => setStates(res.data || []))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingStates(false));
     }, []);
 
@@ -990,7 +1007,7 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
         setCitySearch("");
         geoService.getCities(formData.stateId)
             .then(res => setCities(res.data || []))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingCities(false));
     }, [formData.stateId]);
 
@@ -1001,27 +1018,27 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
         setClinicSearch("");
         geoService.getClinicsByLocation(formData.stateName, formData.city)
             .then(res => setClinicList(res.data || []))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingClinics(false));
     }, [formData.cityId]);
 
-    
+
     useEffect(() => {
-    if (!formData.clinicId) return;
+        if (!formData.clinicId) return;
 
-    setLoadingDoctors(true);
-    setDoctors([]);
+        setLoadingDoctors(true);
+        setDoctors([]);
 
-    geoService.getDoctorsByClinic(formData.clinicId)
-        .then((res) => {
-            console.log("Doctors API response:", res);
-            setDoctors(res.data || []);
-        })
-        .catch((err) => {
-            console.error("Doctors API error:", err);
-        })
-        .finally(() => setLoadingDoctors(false));
-}, [formData.clinicId]);
+        geoService.getDoctorsByClinic(formData.clinicId)
+            .then((res) => {
+                console.log("Doctors API response:", res);
+                setDoctors(res.data || []);
+            })
+            .catch((err) => {
+                console.error("Doctors API error:", err);
+            })
+            .finally(() => setLoadingDoctors(false));
+    }, [formData.clinicId]);
 
     // Mode label helper
     const modeLabel = formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call";
@@ -1380,39 +1397,20 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
 
             <button
                 type="button"
-                onClick={() => updateFields({ paymentMethod: "qr" })}
-                className={`p-10 rounded-[36px] border-2 transition-all flex flex-col items-center gap-6 group ${formData.paymentMethod === "qr" ? "border-medical-teal bg-teal-50/30" : "border-slate-50 hover:border-teal-100"}`}
+                onClick={() => updateFields({ paymentMethod: "razorpay" })}
+                className={`p-10 rounded-[36px] border-2 transition-all flex flex-col items-center gap-6 group ${formData.paymentMethod === "razorpay" ? "border-medical-teal bg-teal-50/30" : "border-slate-50 hover:border-teal-100"}`}
             >
-                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all ${formData.paymentMethod === "qr" ? "bg-medical-teal text-white shadow-xl shadow-teal-200" : "bg-slate-100 text-slate-400 group-hover:bg-teal-50"}`}>
-                    <QrCode className="w-8 h-8" />
+                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all ${formData.paymentMethod === "razorpay" ? "bg-medical-teal text-white shadow-xl shadow-teal-200" : "bg-slate-100 text-slate-400 group-hover:bg-teal-50"}`}>
+                    <CreditCard className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                    <h4 className="font-bold text-slate-900 text-lg mb-1">Scan & Instant Pay</h4>
-                    <p className="text-xs text-slate-500">Secure digital payment via UPI / Bank QR code.</p>
+                    <h4 className="font-bold text-slate-900 text-lg mb-1">Pay via Razorpay</h4>
+                    <p className="text-xs text-slate-500">Secure digital payment via Cards, UPI, or Netbanking.</p>
                 </div>
             </button>
         </div>
 
-        {formData.paymentMethod === "qr" && (
-            <div className="p-10 bg-white border border-slate-100 rounded-[36px] animate-in zoom-in-95 duration-300">
-                <div className="flex flex-col items-center gap-6">
-                    <div className="w-48 h-48 bg-slate-50 rounded-[28px] border-2 border-dashed border-slate-200 flex items-center justify-center relative group">
-                        <QrCode className="w-16 h-16 text-slate-200 group-hover:text-medical-teal transition-colors" />
-                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-[28px] flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-medical-teal uppercase tracking-[0.2em] bg-white px-3 py-1.5 rounded-full shadow-sm">Sample QR</span>
-                        </div>
-                    </div>
-                    <div className="text-center space-y-2">
-                        <p className="text-sm font-bold text-slate-800">Scan to initiate transfer</p>
-                        <p className="text-xs text-slate-400 max-w-[280px]">Please upload your transfer screenshot below after completion.</p>
-                    </div>
-                    <label className="w-full flex items-center justify-center p-5 border-2 border-dashed border-teal-100 bg-teal-50/20 rounded-2xl cursor-pointer hover:bg-teal-50 transition-colors">
-                        <input type="file" className="hidden" />
-                        <span className="text-[10px] font-bold text-medical-teal uppercase tracking-widest">Upload Receipt Image</span>
-                    </label>
-                </div>
-            </div>
-        )}
+        {/* Removed QR Image section as it is handled by Razorpay Modal */}
 
         {/* Summary review before final confirm */}
         <div className="space-y-4 pt-4 border-t border-slate-100">
@@ -1421,7 +1419,7 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
                 <SummaryCard
                     title="Patient Protocol"
                     icon={User}
-                    onEdit={() => {}}
+                    onEdit={() => { }}
                     rows={[
                         { label: "Patient ID", value: formData.patientId },
                         { label: "Profile", value: formData.fullName || "Existing Record" },
@@ -1431,7 +1429,7 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
                 <SummaryCard
                     title="Clinical Node"
                     icon={Hospital}
-                    onEdit={() => {}}
+                    onEdit={() => { }}
                     rows={[
                         { label: "Mode", value: formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call" },
                         { label: "Facility", value: formData.clinic },
@@ -1552,7 +1550,7 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                         <Detail label="Clinic" value={formData.clinic} />
                         <Detail label="Date" value={formData.date} />
                         <Detail label="Slot" value={formData.time} />
-                        <Detail label="Payment" value={formData.paymentMethod === "cash" ? "Verify at Clinic" : "Digital Pending"} />
+                        <Detail label="Payment" value={formData.paymentMethod === "razorpay" ? "Razorpay (₹500 Paid)" : "Verify at Clinic"} />
                     </div>
                 </div>
 

@@ -161,6 +161,22 @@ export const patientService = {
         method: 'DELETE',
         signal
     }),
+    sendOtp: (phone: string, signal?: AbortSignal) => {
+        const body = new URLSearchParams({ phone }).toString();
+        return request('/patient/otp/send', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
+    verifyOtp: (phone: string, otp: string, signal?: AbortSignal) => {
+        const body = new URLSearchParams({ phone, otp }).toString();
+        return request('/patient/otp/verify', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
 };
 
 export const doctorService = {
@@ -274,10 +290,47 @@ export const appointmentService = {
         body,
         signal
     });
-
-
-    
 },
+    getByPhone: (phone: string, signal?: AbortSignal) => {
+        const body = new URLSearchParams({ phone }).toString();
+        return request('/patient/appointments', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
+    cancelAppointment: (appointment_id: string, signal?: AbortSignal) => {
+        const body = new URLSearchParams({ appointment_id }).toString();
+        return request('/appointment/cancel', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
+    rescheduleAppointment: (appointment_id: string, date: string, time: string, signal?: AbortSignal) => {
+        const body = new URLSearchParams({ appointment_id, date, time }).toString();
+        return request('/appointment/reschedule', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
+    verifyRazorpayPayment: (payload: any, signal?: AbortSignal) => {
+        const body = new URLSearchParams(payload).toString();
+        return request('/appointment/verify-payment', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
+    updatePaymentStatus: (appointment_id: string, payment_status: string, signal?: AbortSignal) => {
+        const params = new URLSearchParams({ payment_status }).toString();
+        return request(`/appointment/payment-status/${appointment_id}`, {
+            method: 'PUT',
+            body: params,
+            signal
+        });
+    },
 };
 
 // ✅ ADD THIS AT END OF FILE

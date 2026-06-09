@@ -112,7 +112,7 @@ function AddDoctorForm() {
         };
 
         fetchDoctor();
-        return () => controller.abort();
+        return () => controller.abort("Component unmounted");
     }, [isEditMode, doctorId]);
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -399,16 +399,49 @@ function AddDoctorForm() {
                             </div>
 
                             <div>
-    <label className={labelClass}>Consultant Preference</label>
-    <input
-        type="text"
-        placeholder="e.g. video, clinic, phone"
-        className={inputClass()}
-        value={formData.consultant_preference}
-        onChange={(e) => set("consultant_preference", e.target.value)}
-        disabled={isSubmitting}
-    />
-</div>
+                                <label className={labelClass}>Consultant Preference</label>
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        {formData.consultant_preference.split(',').map(p => p.trim()).filter(Boolean).map(pref => (
+                                            <span key={pref} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-teal-700 text-[10px] font-black uppercase tracking-widest border border-teal-100 animate-in zoom-in duration-200">
+                                                {pref === 'video' ? 'Online Video' : pref === 'clinic' ? 'Offline Clinic' : pref === 'phone' ? 'Phone Call' : pref}
+                                                <button
+                                                    type="button"
+                                                    disabled={isSubmitting}
+                                                    onClick={() => {
+                                                        const current = formData.consultant_preference.split(',').map(p => p.trim()).filter(Boolean);
+                                                        set("consultant_preference", current.filter(p => p !== pref).join(', '));
+                                                    }}
+                                                    className="w-4 h-4 rounded-full hover:bg-teal-200/50 flex items-center justify-center text-teal-700 transition-colors"
+                                                >
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                                                </button>
+                                            </span>
+                                        ))}
+                                        {(!formData.consultant_preference || formData.consultant_preference.split(',').filter(Boolean).length === 0) && (
+                                            <span className="text-xs text-slate-400 font-medium py-1.5">No preferences selected</span>
+                                        )}
+                                    </div>
+                                    <select
+                                        className={`${inputClass()} appearance-none cursor-pointer`}
+                                        value=""
+                                        onChange={(e) => {
+                                            if (!e.target.value) return;
+                                            const current = formData.consultant_preference.split(',').map(p => p.trim()).filter(Boolean);
+                                            if (!current.includes(e.target.value)) {
+                                                current.push(e.target.value);
+                                                set("consultant_preference", current.join(', '));
+                                            }
+                                        }}
+                                        disabled={isSubmitting}
+                                    >
+                                        <option value="">+ Add Preference</option>
+                                        {!formData.consultant_preference.split(',').map(p=>p.trim()).includes('video') && <option value="video">Online Video</option>}
+                                        {!formData.consultant_preference.split(',').map(p=>p.trim()).includes('clinic') && <option value="clinic">Offline Clinic</option>}
+                                        {!formData.consultant_preference.split(',').map(p=>p.trim()).includes('phone') && <option value="phone">Phone Call</option>}
+                                    </select>
+                                </div>
+                            </div>
 
                             <div>
                                 <label className={labelClass}>Experience (Years)</label>
