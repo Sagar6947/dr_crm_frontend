@@ -26,7 +26,7 @@ export default function DoctorsManager() {
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const fetchDoctors = async (page = 1, search = debouncedSearch) => {
-        if (abortControllerRef.current) abortControllerRef.current.abort();
+        if (abortControllerRef.current) abortControllerRef.current.abort("Cancel previous request");
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
@@ -51,20 +51,22 @@ export default function DoctorsManager() {
         }
     };
 
+    // 1. Debounce search & reset pagination if search changes
     useEffect(() => {
-        fetchDoctors(pagination.current_page);
-        return () => { abortControllerRef.current?.abort(); };
-    }, [pagination.current_page]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
+        const timer = setTimeout(() => {
+            if (debouncedSearch !== searchQuery) {
+                setDebouncedSearch(searchQuery);
+                setPagination(prev => prev.current_page === 1 ? prev : { ...prev, current_page: 1 });
+            }
+        }, 500);
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [searchQuery, debouncedSearch]);
 
+    // 2. Fetch data when page or search changes
     useEffect(() => {
-        setPagination(prev => ({ ...prev, current_page: 1 }));
-        fetchDoctors(1, debouncedSearch);
-    }, [debouncedSearch]);
+        fetchDoctors(pagination.current_page, debouncedSearch);
+        return () => { abortControllerRef.current?.abort("Component unmounted or page changed"); };
+    }, [pagination.current_page, debouncedSearch]);
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= pagination.total_pages)

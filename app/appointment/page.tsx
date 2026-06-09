@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import {
     User,
     CheckCircle2,
@@ -22,8 +23,10 @@ import {
     SearchIcon,
     AlertCircle,
     Loader2,
+    Trash2,
+    X,
 } from "lucide-react";
-import { clinicService, geoService, appointmentService } from "@/lib/api";
+import { clinicService, geoService, appointmentService, patientService } from "@/lib/api";
 
 // --- MOCK DATA ---
 const TIME_SLOTS = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
@@ -50,7 +53,7 @@ type FormData = {
     reason: string;
     conditions: string;
     medications: string;
-    paymentMethod: "cash" | "qr";
+    paymentMethod: "cash" | "razorpay";
 };
 
 const INITIAL_DATA: FormData = {
@@ -83,6 +86,23 @@ export default function AppointmentWizard() {
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
     const [isSubmitted, setIsSubmitted] = useState(false);
+
+    // --- EXISTING PATIENT MODULE STATES ---
+    const [existingPhone, setExistingPhone] = useState("");
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpCode, setOtpCode] = useState("");
+    const [otpError, setOtpError] = useState("");
+    const [isOtpVerified, setIsOtpVerified] = useState(false);
+    const [activeTab, setActiveTab] = useState<"upcoming" | "history">("upcoming");
+    const [reschedulingAppointmentId, setReschedulingAppointmentId] = useState<string | null>(null);
+    const [rescheduleDate, setRescheduleDate] = useState("");
+    const [rescheduleTime, setRescheduleTime] = useState("");
+    const [rescheduledSlipAppointment, setRescheduledSlipAppointment] = useState<any>(null);
+    const [cancellationConfirmId, setCancellationConfirmId] = useState<string | null>(null);
+    const [existingPatientName, setExistingPatientName] = useState("Gourav Jain");
+    const [appointments, setAppointments] = useState<any[]>([]);
+    const [loadingAppointments, setLoadingAppointments] = useState(false);
+
 
     useEffect(() => {
         if (formData.patientType === "new" && !formData.patientId) {
@@ -118,11 +138,50 @@ export default function AppointmentWizard() {
                 consultation_mode: formData.consultationMode,
                 chronic_condition: formData.conditions || "None",
                 regular_medications: formData.medications || "None",
-                payment_mode: formData.paymentMethod === "cash" ? "pay_at_visit" : "qr_payment",
+                payment_mode: formData.paymentMethod === "cash" ? "pay_at_visit" : "online",
             };
 
             appointmentService.book(payload)
-                .then(() => setIsSubmitted(true))
+                .then((res: any) => {
+                    if (formData.paymentMethod === "razorpay" && res.data && res.data.razorpay_order_id) {
+                        const options = {
+                            key: res.data.key_id,
+                            amount: res.data.amount,
+                            currency: "INR",
+                            name: "Dr Mahesh Chandra Kandpal",
+                            description: "Consultation Fee",
+                            order_id: res.data.razorpay_order_id,
+                            handler: function (response: any) {
+                                appointmentService.verifyRazorpayPayment({
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                    appointment_code: res.data.appointment_code
+                                }).then(() => {
+                                    setIsSubmitted(true);
+                                }).catch((err: any) => {
+                                    alert("Payment verification failed. Please contact support.");
+                                    console.error(err);
+                                });
+                            },
+                            prefill: {
+                                name: formData.fullName,
+                                email: formData.email,
+                                contact: formData.phone
+                            },
+                            theme: {
+                                color: "#0d9488"
+                            }
+                        };
+                        const rzp = new (window as any).Razorpay(options);
+                        rzp.on('payment.failed', function (response: any) {
+                            alert("Payment Failed. You can click 'Confirm Appointment' again to retry.");
+                        });
+                        rzp.open();
+                    } else {
+                        setIsSubmitted(true);
+                    }
+                })
                 .catch((err) => {
                     console.error(err);
                 });
@@ -133,8 +192,13 @@ export default function AppointmentWizard() {
         return <SuccessCard formData={formData} />;
     }
 
+    if (rescheduledSlipAppointment) {
+        return <UpdatedSuccessCard appointment={rescheduledSlipAppointment} onClose={() => setRescheduledSlipAppointment(null)} />;
+    }
+
     return (
         <div className="min-h-screen bg-medical-slate-bg py-12 md:py-20 font-sans">
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" />
             <div className="container mx-auto px-6 max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-8">
                     <div>
@@ -146,10 +210,14 @@ export default function AppointmentWizard() {
                                 Dr. <span className="text-medical-teal">CRM</span>
                             </span>
                         </Link>
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Booking Portal</h1>
-                        <p className="text-slate-500 text-sm">Precision care starts with a simple choice.</p>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                            {formData.patientType === "existing" && isOtpVerified ? "Patient Portal" : "Booking Portal"}
+                        </h1>
+                        <p className="text-slate-500 text-sm">
+                            {formData.patientType === "existing" && isOtpVerified ? "Manage your consultations and visits." : "Precision care starts with a simple choice."}
+                        </p>
                     </div>
-                    <Stepper currentStep={currentStep} />
+                    {!(formData.patientType === "existing" && isOtpVerified) && <Stepper currentStep={currentStep} />}
                 </div>
 
                 <div className="medical-card shadow-2xl shadow-slate-200/50 relative overflow-hidden">
@@ -162,7 +230,37 @@ export default function AppointmentWizard() {
 
                     <form onSubmit={handleSubmit} className="space-y-10">
                         {currentStep === 0 && <Step0 formData={formData} updateFields={updateFields} generatePatientId={generatePatientId} />}
-                        {currentStep === 1 && <Step1 formData={formData} updateFields={updateFields} />}
+                        {currentStep === 1 && (
+                            <Step1
+                                formData={formData}
+                                updateFields={updateFields}
+                                existingPhone={existingPhone}
+                                setExistingPhone={setExistingPhone}
+                                otpSent={otpSent}
+                                setOtpSent={setOtpSent}
+                                otpCode={otpCode}
+                                setOtpCode={setOtpCode}
+                                otpError={otpError}
+                                setOtpError={setOtpError}
+                                isOtpVerified={isOtpVerified}
+                                setIsOtpVerified={setIsOtpVerified}
+                                activeTab={activeTab}
+                                setActiveTab={setActiveTab}
+                                reschedulingAppointmentId={reschedulingAppointmentId}
+                                setReschedulingAppointmentId={setReschedulingAppointmentId}
+                                rescheduleDate={rescheduleDate}
+                                setRescheduleDate={setRescheduleDate}
+                                rescheduleTime={rescheduleTime}
+                                setRescheduleTime={setRescheduleTime}
+                                setRescheduledSlipAppointment={setRescheduledSlipAppointment}
+                                cancellationConfirmId={cancellationConfirmId}
+                                setCancellationConfirmId={setCancellationConfirmId}
+                                existingPatientName={existingPatientName}
+                                setExistingPatientName={setExistingPatientName}
+                                appointments={appointments}
+                                setAppointments={setAppointments}
+                            />
+                        )}
                         {/* Step 2: Consultation Mode (was Step 3 mode part) */}
                         {currentStep === 2 && <Step2ConsultationMode formData={formData} updateFields={updateFields} />}
                         {/* Step 3: Location + Clinic + Doctor (filtered by mode) */}
@@ -174,17 +272,45 @@ export default function AppointmentWizard() {
                         {/* Step6Review removed — now it's step 6 is payment, review is inline */}
 
                         <div className="flex justify-between items-center pt-10 border-t border-slate-100">
-                            <button
-                                type="button"
-                                onClick={back}
-                                disabled={currentStep === 0}
-                                className={`btn-secondary gap-2 px-8 ${currentStep === 0 ? "opacity-0 invisible" : ""}`}
-                            >
-                                <ChevronLeft className="w-4 h-4" /> Previous
-                            </button>
-                            <button type="submit" className="btn-primary gap-2 !px-12 !py-4">
-                                {currentStep === 6 ? "Confirm Appointment" : "Continue"} <ChevronRight className="w-4 h-4" />
-                            </button>
+                            {formData.patientType === "existing" && currentStep === 1 ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={back}
+                                        className="btn-secondary gap-2 px-8"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" /> Back to Step 0
+                                    </button>
+                                    {isOtpVerified && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsOtpVerified(false);
+                                                setOtpSent(false);
+                                                setOtpCode("");
+                                                setExistingPhone("");
+                                            }}
+                                            className="btn-secondary text-red-500 hover:text-red-600 border-red-100 hover:bg-red-50 gap-2 px-6"
+                                        >
+                                            Sign Out
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={back}
+                                        disabled={currentStep === 0}
+                                        className={`btn-secondary gap-2 px-8 ${currentStep === 0 ? "opacity-0 invisible" : ""}`}
+                                    >
+                                        <ChevronLeft className="w-4 h-4" /> Previous
+                                    </button>
+                                    <button type="submit" className="btn-primary gap-2 !px-12 !py-4">
+                                        {currentStep === 6 ? "Confirm Appointment" : "Continue"} <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </form>
                 </div>
@@ -227,6 +353,33 @@ interface StepProps {
     formData: FormData;
     updateFields: (fields: Partial<FormData>) => void;
     generatePatientId?: () => string;
+
+    // Existing patient states
+    existingPhone?: string;
+    setExistingPhone?: (phone: string) => void;
+    otpSent?: boolean;
+    setOtpSent?: (sent: boolean) => void;
+    otpCode?: string;
+    setOtpCode?: (code: string) => void;
+    otpError?: string;
+    setOtpError?: (err: string) => void;
+    isOtpVerified?: boolean;
+    setIsOtpVerified?: (verified: boolean) => void;
+    activeTab?: "upcoming" | "history";
+    setActiveTab?: (tab: "upcoming" | "history") => void;
+    reschedulingAppointmentId?: string | null;
+    setReschedulingAppointmentId?: (id: string | null) => void;
+    rescheduleDate?: string;
+    setRescheduleDate?: (date: string) => void;
+    rescheduleTime?: string;
+    setRescheduleTime?: (time: string) => void;
+    setRescheduledSlipAppointment?: (appt: any) => void;
+    cancellationConfirmId?: string | null;
+    setCancellationConfirmId?: (id: string | null) => void;
+    existingPatientName?: string;
+    setExistingPatientName?: (name: string) => void;
+    appointments?: any[];
+    setAppointments?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 // --- STEP 0: Patient Discovery ---
@@ -268,8 +421,38 @@ const Step0 = ({ formData, updateFields, generatePatientId }: StepProps) => (
 );
 
 // --- STEP 1: Patient Identity ---
-const Step1 = ({ formData, updateFields }: StepProps) => {
+const Step1 = ({
+    formData,
+    updateFields,
+    existingPhone = "",
+    setExistingPhone = () => { },
+    otpSent = false,
+    setOtpSent = () => { },
+    otpCode = "",
+    setOtpCode = () => { },
+    otpError = "",
+    setOtpError = () => { },
+    isOtpVerified = false,
+    setIsOtpVerified = () => { },
+    activeTab = "upcoming",
+    setActiveTab = () => { },
+    reschedulingAppointmentId = null,
+    setReschedulingAppointmentId = () => { },
+    rescheduleDate = "",
+    setRescheduleDate = () => { },
+    rescheduleTime = "",
+    setRescheduleTime = () => { },
+    setRescheduledSlipAppointment = () => { },
+    cancellationConfirmId = null,
+    setCancellationConfirmId = () => { },
+    existingPatientName = "Gourav Jain",
+    setExistingPatientName = () => { },
+    appointments = [],
+    setAppointments = () => { },
+}: StepProps) => {
     const [phoneError, setPhoneError] = useState("");
+    const [localOtpError, setLocalOtpError] = useState("");
+    const [loadingAppointments, setLoadingAppointments] = useState(false);
 
     const handlePhone = (val: string) => {
         const digits = val.replace(/\D/g, "").slice(0, 10);
@@ -281,12 +464,123 @@ const Step1 = ({ formData, updateFields }: StepProps) => {
         }
     };
 
+    const handleExistingPhoneInput = (val: string) => {
+        const digits = val.replace(/\D/g, "").slice(0, 10);
+        setExistingPhone(digits);
+    };
+
+    const handleSendOtp = async () => {
+        if (existingPhone.length !== 10) {
+            setPhoneError("Please enter a valid 10-digit mobile number");
+            return;
+        }
+        setPhoneError("");
+        try {
+            await patientService.sendOtp(existingPhone);
+            setOtpSent(true);
+            setOtpError("");
+        } catch (error) {
+            setPhoneError("Failed to send OTP. Please try again.");
+        }
+    };
+
+    const fetchAppointments = async (phone: string) => {
+        try {
+            setLoadingAppointments(true);
+            const res = await appointmentService.getByPhone(phone);
+            setAppointments(res.data || []);
+        } catch (error) {
+            console.error("Failed to fetch appointments", error);
+        } finally {
+            setLoadingAppointments(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (otpCode.length !== 6) {
+            setLocalOtpError("OTP must be exactly 6 digits");
+            return;
+        }
+        try {
+            const res = await patientService.verifyOtp(existingPhone, otpCode);
+            setLocalOtpError("");
+            setIsOtpVerified(true);
+            updateFields({ phone: existingPhone });
+            if (res.data?.patientName) {
+                setExistingPatientName(res.data.patientName);
+            }
+
+            // Fetch appointments
+            fetchAppointments(existingPhone);
+        } catch (error) {
+            setLocalOtpError("Invalid OTP. Please try again.");
+        }
+    };
+
+    const filteredAppts = appointments.filter((appt) => {
+        // Appts are already fetched for this phone, just filter by status
+        if (activeTab === "upcoming") {
+            return appt.status === "Scheduled";
+        } else {
+            return appt.status === "Completed" || appt.status === "Cancelled";
+        }
+    });
+
+    const handleCancelAppointment = async (id: string) => {
+        try {
+            await appointmentService.cancelAppointment(id);
+            setAppointments((prev) =>
+                prev.map((appt) =>
+                    appt.id === id ? { ...appt, status: "Cancelled" } : appt
+                )
+            );
+            setCancellationConfirmId(null);
+        } catch (error) {
+            console.error("Failed to cancel appointment", error);
+        }
+    };
+
+    const handleStartReschedule = (appt: any) => {
+        setReschedulingAppointmentId(appt.id);
+        setRescheduleDate(appt.date);
+        setRescheduleTime(appt.time);
+    };
+
+    const handleSaveReschedule = async (id: string) => {
+        if (!rescheduleDate || !rescheduleTime) return;
+
+        try {
+            await appointmentService.rescheduleAppointment(id, rescheduleDate, rescheduleTime);
+            setAppointments((prev) => {
+                const updated = prev.map((appt) =>
+                    appt.id === id
+                        ? { ...appt, date: rescheduleDate, time: rescheduleTime, status: "Scheduled" }
+                        : appt
+                );
+
+                const updatedAppt = updated.find((appt) => appt.id === id);
+                if (updatedAppt) {
+                    setTimeout(() => {
+                        setRescheduledSlipAppointment(updatedAppt);
+                    }, 100);
+                }
+                return updated;
+            });
+
+            setReschedulingAppointmentId(null);
+        } catch (error) {
+            console.error("Failed to reschedule appointment", error);
+        }
+    };
+
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
             <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 1: Patient Identity</h2>
-                <p className="text-slate-500 text-sm">
-                    {formData.patientType === "new" ? "Creating your unique medical profile." : "Locate your historical records."}
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                    {formData.patientType === "new" || !isOtpVerified ? "Step 1: Patient Identity" : "Patient Visits Dashboard"}
+                </h2>
+                <p className="text-slate-500 text-sm font-medium">
+                    {formData.patientType === "new" ? "Creating your unique medical profile." : isOtpVerified ? "View and manage your consultation schedules." : "Locate your historical records."}
                 </p>
             </div>
 
@@ -324,20 +618,287 @@ const Step1 = ({ formData, updateFields }: StepProps) => {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    <div className="relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-teal transition-colors"><SearchIcon className="w-5 h-5" /></div>
-                        <input
-                            type="text"
-                            placeholder="Enter Patient ID (e.g. CRM-2025-XXXX) or Phone Number"
-                            className="w-full bg-slate-50 border-slate-100 border p-5 pl-12 rounded-[24px] focus:ring-2 focus:ring-medical-teal/20 focus:border-medical-teal outline-none transition-all text-sm font-medium"
-                            value={formData.patientId}
-                            onChange={(e) => updateFields({ patientId: e.target.value })}
-                            required
-                        />
-                    </div>
-                    <div className="p-10 border border-dashed border-slate-200 rounded-[32px] text-center space-y-2">
-                        <p className="text-sm font-medium text-slate-400">Search results will appear here after verification.</p>
-                    </div>
+                    {!isOtpVerified ? (
+                        <div className="space-y-6 max-w-md mx-auto">
+                            {!otpSent ? (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Registered Mobile Number</label>
+                                        <div className="relative group">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-medical-teal transition-colors font-medium">
+                                                <Phone className="w-5 h-5" />
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                placeholder="e.g. 9340788649"
+                                                maxLength={10}
+                                                className={`w-full bg-slate-50 border p-5 pl-12 rounded-[24px] focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium ${phoneError ? "border-red-300" : "border-slate-100"}`}
+                                                value={existingPhone}
+                                                onChange={(e) => handleExistingPhoneInput(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        {phoneError && (
+                                            <p className="text-[11px] text-red-500 font-medium pl-1 flex items-center gap-1">
+                                                <AlertCircle className="w-3 h-3" /> {phoneError}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleSendOtp}
+                                        className="btn-primary w-full justify-center !py-4 shadow-lg shadow-teal-100"
+                                    >
+                                        Send Verification OTP
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <div className="p-4 bg-teal-50 border border-teal-100 rounded-2xl flex items-start gap-3">
+                                        <CheckCircle2 className="w-5 h-5 text-medical-teal shrink-0 mt-0.5" />
+                                        <div className="space-y-0.5">
+                                            <p className="text-xs font-bold text-medical-teal">OTP Sent Successfully</p>
+                                            <p className="text-[11px] text-medical-teal/80">We have sent a verification code to +91 {existingPhone.slice(0, 5)}-{existingPhone.slice(5)}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">6-Digit OTP Code</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Enter 6-digit OTP (e.g. 123456)"
+                                            maxLength={6}
+                                            className={`w-full bg-slate-50 border p-5 rounded-[24px] text-center tracking-[0.5em] text-lg font-bold focus:ring-2 focus:ring-medical-teal outline-none transition-all ${localOtpError ? "border-red-300" : "border-slate-100"}`}
+                                            value={otpCode}
+                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                            required
+                                        />
+                                        {localOtpError && (
+                                            <p className="text-[11px] text-red-500 font-medium pl-1 flex items-center gap-1">
+                                                <AlertCircle className="w-3 h-3" /> {localOtpError}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOtpSent(false)}
+                                            className="btn-secondary w-full justify-center !py-4"
+                                        >
+                                            Change Number
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleVerifyOtp}
+                                            disabled={otpCode.length < 6}
+                                            className="btn-primary w-full justify-center !py-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Verify OTP
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-6 animate-in fade-in duration-500">
+                            {/* Patient Profile Header */}
+                            <div className="p-6 bg-gradient-to-r from-teal-50/50 to-emerald-50/30 border border-slate-100 rounded-[32px] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-medical-teal text-white rounded-[20px] flex items-center justify-center font-bold text-lg shadow-lg shadow-teal-100 shrink-0 uppercase">
+                                        {existingPatientName.split(" ").map(n => n[0]).join("")}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800 text-lg leading-snug">Welcome Back, {existingPatientName}</h3>
+                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                            <span className="text-[10px] font-bold text-medical-teal bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">Patient ID: CRM-2025-7138</span>
+                                            <span className="text-[10px] font-bold text-slate-400">Phone: +91 {existingPhone}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tabs Switcher */}
+                            <div className="flex border-b border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveTab("upcoming");
+                                        setReschedulingAppointmentId(null);
+                                        setCancellationConfirmId(null);
+                                    }}
+                                    className={`py-4 px-6 font-bold text-xs uppercase tracking-wider border-b-2 transition-all ${activeTab === "upcoming" ? "border-medical-teal text-medical-teal" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                                >
+                                    Not Visited (Upcoming)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveTab("history");
+                                        setReschedulingAppointmentId(null);
+                                        setCancellationConfirmId(null);
+                                    }}
+                                    className={`py-4 px-6 font-bold text-xs uppercase tracking-wider border-b-2 transition-all ${activeTab === "history" ? "border-medical-teal text-medical-teal" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+                                >
+                                    Visited (History)
+                                </button>
+                            </div>
+
+                            {/* Appointments list */}
+                            <div className="space-y-4">
+                                {filteredAppts.length === 0 ? (
+                                    <div className="p-12 text-center border-2 border-dashed border-slate-100 rounded-[32px] space-y-3 bg-slate-50/20">
+                                        <Calendar className="w-10 h-10 text-slate-300 mx-auto opacity-60" />
+                                        <p className="text-sm font-semibold text-slate-400">No appointments found in this section.</p>
+                                    </div>
+                                ) : (
+                                    filteredAppts.map((appt) => (
+                                        <div key={appt.id} className="p-6 bg-white border border-slate-100 rounded-[28px] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden space-y-4">
+                                            {/* Top Row: Appt ID and badges */}
+                                            <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-50">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-800">{appt.id}</span>
+                                                    <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${appt.status === "Scheduled" ? "bg-teal-50 text-medical-teal border-teal-100" :
+                                                            appt.status === "Completed" ? "bg-green-50 text-green-600 border-green-100" :
+                                                                "bg-red-50 text-red-500 border-red-100"
+                                                        }`}>
+                                                        {appt.status}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded border border-slate-100 capitalize">
+                                                    {appt.consultationMode === "clinic" ? "Offline Clinic" : appt.consultationMode === "video" ? "Online Video" : "Phone Call"}
+                                                </span>
+                                            </div>
+
+                                            {/* Details Info Grid */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6 text-xs">
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Doctor Assigned</p>
+                                                    <p className="font-bold text-slate-800">{appt.doctorName}</p>
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Clinic Location</p>
+                                                    <p className="font-bold text-slate-800">{appt.clinic}</p>
+                                                    <p className="text-[10px] text-slate-400">{appt.city}, {appt.stateName}</p>
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Date & Time</p>
+                                                    <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                                                        <Calendar className="w-3.5 h-3.5 text-medical-teal" /> {appt.date}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Schedule Slot</p>
+                                                    <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                                                        <Clock className="w-3.5 h-3.5 text-medical-teal" /> {appt.time}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {appt.status === "Scheduled" && (
+                                                <div className="pt-2">
+                                                    {reschedulingAppointmentId === appt.id ? (
+                                                        <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                                                                <h5 className="text-[10px] font-bold text-medical-teal uppercase tracking-widest">Reschedule Appointment</h5>
+                                                                <button type="button" onClick={() => setReschedulingAppointmentId(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-1.5">
+                                                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">New Date *</label>
+                                                                    <div className="relative">
+                                                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                                        <input
+                                                                            type="date"
+                                                                            className="w-full bg-white border border-slate-200 p-3 pl-9 rounded-xl text-xs outline-none focus:ring-2 focus:ring-medical-teal font-medium text-slate-700"
+                                                                            value={rescheduleDate}
+                                                                            onChange={(e) => setRescheduleDate(e.target.value)}
+                                                                            required
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">New Available Slots *</label>
+                                                                    <div className="grid grid-cols-3 gap-1.5">
+                                                                        {TIME_SLOTS.map((slot) => (
+                                                                            <button
+                                                                                key={slot}
+                                                                                type="button"
+                                                                                onClick={() => setRescheduleTime(slot)}
+                                                                                className={`py-2 px-1 rounded-lg text-[9px] font-bold border transition-all ${rescheduleTime === slot ? "bg-medical-teal border-medical-teal text-white shadow-sm" : "bg-white border-slate-200 text-slate-500 hover:border-teal-200"}`}
+                                                                            >
+                                                                                {slot}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end gap-2 pt-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setReschedulingAppointmentId(null)}
+                                                                    className="btn-secondary !py-2 !px-4 !text-xs !rounded-xl"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleSaveReschedule(appt.id)}
+                                                                    className="btn-primary !py-2 !px-5 !text-xs !rounded-xl"
+                                                                >
+                                                                    Confirm Reschedule
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : cancellationConfirmId === appt.id ? (
+                                                        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between gap-4 animate-in slide-in-from-top-1 duration-300">
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-xs font-bold text-red-700">Cancel this visit?</p>
+                                                                <p className="text-[10px] text-red-600">This action cannot be undone.</p>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setCancellationConfirmId(null)}
+                                                                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-slate-50"
+                                                                >
+                                                                    No, Keep
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleCancelAppointment(appt.id)}
+                                                                    className="px-3 py-1.5 bg-red-600 border border-red-600 text-white rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-red-700 shadow-sm"
+                                                                >
+                                                                    Yes, Cancel
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-50">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setCancellationConfirmId(appt.id)}
+                                                                className="flex items-center gap-1.5 px-4 py-2 border border-red-100 text-red-500 rounded-xl text-xs font-semibold hover:bg-red-50/50 transition-colors"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" /> Cancel Visit
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleStartReschedule(appt)}
+                                                                className="flex items-center gap-1.5 px-4 py-2 border border-teal-100 text-medical-teal rounded-xl text-xs font-semibold hover:bg-teal-50/50 transition-colors"
+                                                            >
+                                                                <Calendar className="w-3.5 h-3.5" /> Reschedule Visit
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -435,7 +996,7 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
     useEffect(() => {
         geoService.getStates()
             .then(res => setStates(res.data || []))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingStates(false));
     }, []);
 
@@ -446,7 +1007,7 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
         setCitySearch("");
         geoService.getCities(formData.stateId)
             .then(res => setCities(res.data || []))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingCities(false));
     }, [formData.stateId]);
 
@@ -457,37 +1018,27 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
         setClinicSearch("");
         geoService.getClinicsByLocation(formData.stateName, formData.city)
             .then(res => setClinicList(res.data || []))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingClinics(false));
     }, [formData.cityId]);
 
-    // useEffect(() => {
-    //     if (!formData.clinicId) return;
-    //     setLoadingDoctors(true);
-    //     setDoctors([]);
-    //     geoService.getDoctorsByClinic(formData.clinicId)
-    //         .then(res => 
-                
-    //             setDoctors(res.data || []))
-    //         .catch(() => {})
-    //         .finally(() => setLoadingDoctors(false));
-    // }, [formData.clinicId]);
+
     useEffect(() => {
-    if (!formData.clinicId) return;
+        if (!formData.clinicId) return;
 
-    setLoadingDoctors(true);
-    setDoctors([]);
+        setLoadingDoctors(true);
+        setDoctors([]);
 
-    geoService.getDoctorsByClinic(formData.clinicId)
-        .then((res) => {
-            console.log("Doctors API response:", res);
-            setDoctors(res.data || []);
-        })
-        .catch((err) => {
-            console.error("Doctors API error:", err);
-        })
-        .finally(() => setLoadingDoctors(false));
-}, [formData.clinicId]);
+        geoService.getDoctorsByClinic(formData.clinicId)
+            .then((res) => {
+                console.log("Doctors API response:", res);
+                setDoctors(res.data || []);
+            })
+            .catch((err) => {
+                console.error("Doctors API error:", err);
+            })
+            .finally(() => setLoadingDoctors(false));
+    }, [formData.clinicId]);
 
     // Mode label helper
     const modeLabel = formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call";
@@ -846,39 +1397,20 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
 
             <button
                 type="button"
-                onClick={() => updateFields({ paymentMethod: "qr" })}
-                className={`p-10 rounded-[36px] border-2 transition-all flex flex-col items-center gap-6 group ${formData.paymentMethod === "qr" ? "border-medical-teal bg-teal-50/30" : "border-slate-50 hover:border-teal-100"}`}
+                onClick={() => updateFields({ paymentMethod: "razorpay" })}
+                className={`p-10 rounded-[36px] border-2 transition-all flex flex-col items-center gap-6 group ${formData.paymentMethod === "razorpay" ? "border-medical-teal bg-teal-50/30" : "border-slate-50 hover:border-teal-100"}`}
             >
-                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all ${formData.paymentMethod === "qr" ? "bg-medical-teal text-white shadow-xl shadow-teal-200" : "bg-slate-100 text-slate-400 group-hover:bg-teal-50"}`}>
-                    <QrCode className="w-8 h-8" />
+                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all ${formData.paymentMethod === "razorpay" ? "bg-medical-teal text-white shadow-xl shadow-teal-200" : "bg-slate-100 text-slate-400 group-hover:bg-teal-50"}`}>
+                    <CreditCard className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                    <h4 className="font-bold text-slate-900 text-lg mb-1">Scan & Instant Pay</h4>
-                    <p className="text-xs text-slate-500">Secure digital payment via UPI / Bank QR code.</p>
+                    <h4 className="font-bold text-slate-900 text-lg mb-1">Pay via Razorpay</h4>
+                    <p className="text-xs text-slate-500">Secure digital payment via Cards, UPI, or Netbanking.</p>
                 </div>
             </button>
         </div>
 
-        {formData.paymentMethod === "qr" && (
-            <div className="p-10 bg-white border border-slate-100 rounded-[36px] animate-in zoom-in-95 duration-300">
-                <div className="flex flex-col items-center gap-6">
-                    <div className="w-48 h-48 bg-slate-50 rounded-[28px] border-2 border-dashed border-slate-200 flex items-center justify-center relative group">
-                        <QrCode className="w-16 h-16 text-slate-200 group-hover:text-medical-teal transition-colors" />
-                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-[28px] flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-medical-teal uppercase tracking-[0.2em] bg-white px-3 py-1.5 rounded-full shadow-sm">Sample QR</span>
-                        </div>
-                    </div>
-                    <div className="text-center space-y-2">
-                        <p className="text-sm font-bold text-slate-800">Scan to initiate transfer</p>
-                        <p className="text-xs text-slate-400 max-w-[280px]">Please upload your transfer screenshot below after completion.</p>
-                    </div>
-                    <label className="w-full flex items-center justify-center p-5 border-2 border-dashed border-teal-100 bg-teal-50/20 rounded-2xl cursor-pointer hover:bg-teal-50 transition-colors">
-                        <input type="file" className="hidden" />
-                        <span className="text-[10px] font-bold text-medical-teal uppercase tracking-widest">Upload Receipt Image</span>
-                    </label>
-                </div>
-            </div>
-        )}
+        {/* Removed QR Image section as it is handled by Razorpay Modal */}
 
         {/* Summary review before final confirm */}
         <div className="space-y-4 pt-4 border-t border-slate-100">
@@ -887,7 +1419,7 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
                 <SummaryCard
                     title="Patient Protocol"
                     icon={User}
-                    onEdit={() => {}}
+                    onEdit={() => { }}
                     rows={[
                         { label: "Patient ID", value: formData.patientId },
                         { label: "Profile", value: formData.fullName || "Existing Record" },
@@ -897,7 +1429,7 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
                 <SummaryCard
                     title="Clinical Node"
                     icon={Hospital}
-                    onEdit={() => {}}
+                    onEdit={() => { }}
                     rows={[
                         { label: "Mode", value: formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call" },
                         { label: "Facility", value: formData.clinic },
@@ -1018,7 +1550,7 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                         <Detail label="Clinic" value={formData.clinic} />
                         <Detail label="Date" value={formData.date} />
                         <Detail label="Slot" value={formData.time} />
-                        <Detail label="Payment" value={formData.paymentMethod === "cash" ? "Verify at Clinic" : "Digital Pending"} />
+                        <Detail label="Payment" value={formData.paymentMethod === "razorpay" ? "Razorpay (₹500 Paid)" : "Verify at Clinic"} />
                     </div>
                 </div>
 
@@ -1055,3 +1587,57 @@ const Detail = ({ label, value, accent }: DetailProps) => (
         <p className={`text-sm font-bold ${accent ? "text-medical-teal" : "text-slate-900"}`}>{value}</p>
     </div>
 );
+
+const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClose: () => void }) => {
+    return (
+        <div className="min-h-screen bg-medical-slate-bg flex items-center justify-center p-6 animate-in zoom-in-95 duration-500 font-sans">
+            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-teal-50 rounded-full translate-x-20 -translate-y-20 -z-1" />
+
+                <div className="text-center space-y-6 mb-12 relative z-10">
+                    <div className="w-24 h-24 bg-teal-50 text-medical-teal rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-teal-100 rotate-12">
+                        <CheckCircle2 className="w-12 h-12 -rotate-12" />
+                    </div>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Updated Schedule</h2>
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-50 text-green-600 rounded-full border border-green-100 text-[10px] font-bold uppercase tracking-widest">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> Updated Appointment Status
+                    </div>
+                    <p className="text-slate-500 max-w-sm mx-auto">Your schedule has been successfully updated. Our care coordinator will contact you shortly.</p>
+                </div>
+
+                <div className="bg-slate-50/50 rounded-[40px] border border-slate-100 p-8 space-y-8 mb-10">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <Detail label="Patient ID" value={appointment.patientId} accent />
+                        <Detail label="Appt ID" value={appointment.id} accent />
+                        <Detail label="Patient" value={appointment.fullName || "Historical Name"} />
+                        <Detail label="Mode" value={appointment.consultationMode === "video" ? "Online Video" : appointment.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"} />
+                        <Detail label="State" value={appointment.stateName} />
+                        <Detail label="City" value={appointment.city} />
+                        <Detail label="Clinic" value={appointment.clinic} />
+                        <Detail label="Date" value={appointment.date} />
+                        <Detail label="Slot" value={appointment.time} />
+                        <Detail label="Payment" value={appointment.paymentMethod === "cash" ? "Verify at Clinic" : "Digital Pending"} />
+                    </div>
+                </div>
+
+                <div className="p-8 bg-teal-50 rounded-[32px] border border-teal-100 mb-10 flex items-start gap-4">
+                    <AlertCircle className="w-6 h-6 text-medical-teal shrink-0 mt-1" />
+                    <div className="space-y-1">
+                        <h5 className="font-bold text-medical-teal text-sm">Automated Schedule Updated</h5>
+                        <p className="text-xs text-medical-teal/70 leading-relaxed font-medium">Updated notification alerts sent to your registered channels. You can modify this appointment again anytime within <span className="font-bold">30 days</span>.</p>
+                    </div>
+                </div>
+
+                <div className="flex gap-4">
+                    <button onClick={onClose} className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
+                        Go to Portal
+                    </button>
+                    <button className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
+                        Print Slip
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+

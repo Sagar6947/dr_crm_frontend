@@ -8,6 +8,7 @@ import {
     Filter, Download, Eye, Pencil, HeartPulse, Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { patientService } from "@/lib/api";
 
 
 interface Patient {
@@ -36,56 +37,20 @@ export default function PatientsManager() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
 
-    // const fetchPatients = async () => {
-    //     setLoading(true);
-    //     try {
-    //         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/patient/list`, {
-    //             method: "POST",
-    //             headers: { "Content-Type": "application/json" },
-    //             body: JSON.stringify({
-    //                 page_no: currentPage,
-    //                 limit: ITEMS_PER_PAGE,
-    //                 search: searchQuery,
-    //             }),
-    //         });
-    //         const data = await res.json();
-    //         const list = Array.isArray(data?.data) ? data.data : [];
-    //         setPatients(list);
-    //         setTotalItems(data?.total || list.length);
-    //     } catch (err) {
-    //         console.error("Failed to fetch patients", err);
-    //         setPatients([]);
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // }; 
+   
 
-    const fetchPatients = async () => {
+  const fetchPatients = async () => {
     setLoading(true);
-
     try {
-        const formData = new FormData();
-        formData.append("page_no", String(currentPage));
-        formData.append("limit", String(ITEMS_PER_PAGE));
-        formData.append("search", searchQuery);
-
-        const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/patient/list`,
-            {
-                method: "POST",
-                body: formData,
-            }
-        );
-
-        const data = await res.json();
-
-        console.log("PATIENT LIST RESPONSE =>", data);
-
-        const list = Array.isArray(data?.data) ? data.data : [];
-
+        const response = await patientService.getAll({
+            page_no: currentPage,
+            limit: ITEMS_PER_PAGE,
+            search: searchQuery,
+        });
+        const list = Array.isArray(response?.data) ? response.data : [];
         setPatients(list);
-        setTotalItems(data?.total || list.length);
-    } catch (err) {
+        setTotalItems(response?.pagination?.total_records || response?.total || list.length);
+    } catch (err: any) {
         console.error("Failed to fetch patients", err);
         setPatients([]);
     } finally {

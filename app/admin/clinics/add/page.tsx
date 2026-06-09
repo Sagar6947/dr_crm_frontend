@@ -103,7 +103,7 @@ function AddClinicForm() {
             }
         };
         fetchStates();
-        return () => controller.abort();
+        return () => controller.abort("Component unmounted");
     }, []);
 
     // Step 2: Agar edit mode hai to states load hone ke baad clinic data fetch karo
@@ -181,11 +181,11 @@ function AddClinicForm() {
         };
 
         fetchClinic();
-        return () => controller.abort();
+        return () => controller.abort("Component unmounted");
     }, [isEditMode, clinicId, states]);
 
     const handleStateChange = async (stateId: string) => {
-        if (abortCitiesRef.current) abortCitiesRef.current.abort();
+        if (abortCitiesRef.current) abortCitiesRef.current.abort("Cancel previous request");
         const controller = new AbortController();
         abortCitiesRef.current = controller;
 

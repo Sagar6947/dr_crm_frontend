@@ -53,7 +53,7 @@ export default function ClinicsManager() {
   const fetchClinics = async (page = 1, search = debouncedSearch) => {
     // Cancel previous request if any
     if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+      abortControllerRef.current.abort("Cancel previous request");
     }
 
     // Create new AbortController
@@ -93,31 +93,26 @@ export default function ClinicsManager() {
     }
   };
 
-  // Initial fetch and pagination changes
-  useEffect(() => {
-    fetchClinics(pagination.current_page);
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [pagination.current_page]);
-
-  // Search debouncing logic
+  // 1. Debounce search & reset pagination if search changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
+      if (debouncedSearch !== searchQuery) {
+        setDebouncedSearch(searchQuery);
+        setPagination((prev) => prev.current_page === 1 ? prev : { ...prev, current_page: 1 });
+      }
     }, 500);
-
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, debouncedSearch]);
 
-  // Trigger fetch when debounced search changes
+  // 2. Fetch data when page or search changes
   useEffect(() => {
-    setPagination((prev) => ({ ...prev, current_page: 1 }));
-    fetchClinics(1, debouncedSearch);
-  }, [debouncedSearch]);
+    fetchClinics(pagination.current_page, debouncedSearch);
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort("Component unmounted or page changed");
+      }
+    };
+  }, [pagination.current_page, debouncedSearch]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
