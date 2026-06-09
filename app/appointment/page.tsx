@@ -86,6 +86,12 @@ export default function AppointmentWizard() {
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [customAlert, setCustomAlert] = useState<string | null>(null);
+
+    const showCustomAlert = (msg: string) => {
+        setCustomAlert(msg);
+        setTimeout(() => setCustomAlert(null), 4000);
+    };
 
     // --- EXISTING PATIENT MODULE STATES ---
     const [existingPhone, setExistingPhone] = useState("");
@@ -123,7 +129,7 @@ export default function AppointmentWizard() {
         // Validations
         if (currentStep === 1 && formData.patientType === "new") {
             if (formData.phone.length !== 10) {
-                alert("Please enter a valid 10-digit mobile number.");
+                showCustomAlert("Please enter a valid 10-digit mobile number.");
                 return;
             }
             if (formData.dob) {
@@ -131,7 +137,7 @@ export default function AppointmentWizard() {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 if (dobDate > today) {
-                    alert("Date of birth cannot be in the future.");
+                    showCustomAlert("Date of birth cannot be in the future.");
                     return;
                 }
             }
@@ -139,21 +145,21 @@ export default function AppointmentWizard() {
 
         if (currentStep === 2) {
             if (!formData.consultationMode) {
-                alert("Please select a consultation mode.");
+                showCustomAlert("Please select a consultation mode.");
                 return;
             }
         }
 
         if (currentStep === 3) {
             if (!formData.stateId || !formData.cityId || !formData.clinicId || !formData.doctorId) {
-                alert("Please select state, city, clinic, and doctor to proceed.");
+                showCustomAlert("Please select state, city, clinic, and doctor to proceed.");
                 return;
             }
         }
 
         if (currentStep === 4) {
             if (!formData.date || !formData.time) {
-                alert("Please select appointment date and time.");
+                showCustomAlert("Please select appointment date and time.");
                 return;
             }
             if (formData.date) {
@@ -161,7 +167,7 @@ export default function AppointmentWizard() {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 if (apptDate < today) {
-                    alert("Appointment date cannot be in the past.");
+                    showCustomAlert("Appointment date cannot be in the past.");
                     return;
                 }
             }
@@ -208,7 +214,7 @@ export default function AppointmentWizard() {
                                 }).then(() => {
                                     setIsSubmitted(true);
                                 }).catch((err: any) => {
-                                    alert("Payment verification failed. Please contact support.");
+                                    showCustomAlert("Payment verification failed. Please contact support.");
                                     console.error(err);
                                 });
                             },
@@ -223,7 +229,7 @@ export default function AppointmentWizard() {
                         };
                         const rzp = new (window as any).Razorpay(options);
                         rzp.on('payment.failed', function (response: any) {
-                            alert("Payment Failed. You can click 'Confirm Appointment' again to retry.");
+                            showCustomAlert("Payment Failed. You can click 'Confirm Appointment' again to retry.");
                         });
                         rzp.open();
                     } else {
@@ -247,6 +253,22 @@ export default function AppointmentWizard() {
     return (
         <div className="min-h-screen bg-medical-slate-bg py-12 md:py-20 font-sans">
             <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+            
+            {customAlert && (
+                <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
+                    <div className="bg-white border-l-4 border-red-500 shadow-xl rounded-xl p-4 flex items-start gap-3 max-w-md">
+                        <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <h4 className="text-sm font-bold text-slate-800">Action Required</h4>
+                            <p className="text-xs text-slate-500 mt-1">{customAlert}</p>
+                        </div>
+                        <button type="button" onClick={() => setCustomAlert(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="container mx-auto px-6 max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-8">
                     <div>
