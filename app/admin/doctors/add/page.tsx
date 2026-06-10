@@ -458,6 +458,9 @@ function AddDoctorForm() {
                             <div>
                                 <label className={labelClass}>Role</label>
                                 <select className={`${inputClass()} appearance-none`} value={formData.role} onChange={(e) => set("role", e.target.value)} disabled={isSubmitting}>
+                                        
+                                    <option value="master">Master</option>
+                                    <option value="professional"><Professional></Professional></option>
                                     <option value="senior_doctor">Senior Doctor</option>
                                     <option value="junior_doctor">Junior Doctor</option>
                                     <option value="consultant">Consultant</option>
