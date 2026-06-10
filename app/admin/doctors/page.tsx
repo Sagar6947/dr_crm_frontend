@@ -224,12 +224,12 @@ export default function DoctorsManager() {
                                             {/* Status */}
                                             <td className="px-8 py-6">
                                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
-                                                    doctor.status === "active"
+                                                    doctor.status === "active" || doctor.status == "1"
                                                         ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                                                         : "bg-slate-100 text-slate-500 border-slate-200"
                                                 }`}>
-                                                    <div className={`w-1.5 h-1.5 rounded-full mr-2 ${doctor.status === "active" ? "bg-emerald-500" : "bg-slate-400"}`} />
-                                                    {doctor.status}
+                                                    <div className={`w-1.5 h-1.5 rounded-full mr-2 ${doctor.status === "active" || doctor.status == "1" ? "bg-emerald-500" : "bg-slate-400"}`} />
+                                                    {doctor.status == "1" ? "Active" : doctor.status == "0" ? "Inactive" : doctor.status}
                                                 </span>
                                             </td>
 

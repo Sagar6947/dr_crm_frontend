@@ -49,7 +49,7 @@ function AddClinicForm() {
     const [formData, setFormData] = useState({
         name: "",
         reg_number: "",
-        status: "active",
+        status: "1",
         address_line1: "",
         address_line2: "",
         city: "",
@@ -129,7 +129,7 @@ function AddClinicForm() {
                     setFormData({
                         name: c.name || "",
                         reg_number: c.reg_number || "",
-                        status: c.status?.toLowerCase() || "active",
+                        status: c.status?.toString().toLowerCase() === "active" || c.status == "1" ? "1" : "0",
                         address_line1: c.address_line1 || "",
                         address_line2: c.address_line2 || "",
                         city: c.city || "",
@@ -389,8 +389,8 @@ function AddClinicForm() {
                                             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                             disabled={isSubmitting}
                                         >
-                                            <option value="active">Active</option>
-                                            <option value="inactive">Inactive</option>
+                                            <option value="1">Active</option>
+                                            <option value="0">Inactive</option>
                                         </select>
                                     </div>
                                 )}
