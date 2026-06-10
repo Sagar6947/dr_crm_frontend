@@ -54,7 +54,7 @@ function AddDoctorForm() {
         username: "",
         password: "",
         role: "senior_doctor",
-        status: "active",
+        status: "1",
     });
 
     const set = (field: string, value: string) =>
@@ -89,7 +89,7 @@ function AddDoctorForm() {
                         username: d.username || "",
                         password: "", // password blank in edit mode
                         role: d.role || "senior_doctor",
-                        status: d.status || "active",
+                        status: d.status?.toString().toLowerCase() === "active" || d.status == "1" ? "1" : "0",
                     });
                     // if (d.profile_photo_url) setProfilePhoto(d.profile_photo_url);
                     // if (d.profile_photo) setProfilePhoto(d.profile_photo);
@@ -471,8 +471,8 @@ function AddDoctorForm() {
                             <div>
                                 <label className={labelClass}>Status</label>
                                 <select className={`${inputClass()} appearance-none`} value={formData.status} onChange={(e) => set("status", e.target.value)} disabled={isSubmitting}>
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
+                                    <option value="1">Active</option>
+                                    <option value="0">Inactive</option>
                                 </select>
                             </div>
                         </div>
