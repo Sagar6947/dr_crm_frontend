@@ -13,22 +13,23 @@ import {
     GraduationCap,
     Building2,
     Users,
-    Activity
+    Activity,
+    Video
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { doctorService } from "@/lib/api";
 
-export default function DoctorDetailPage({
-    params,
-}: {
-    params: { id: string };
-}) {
+export default function DoctorDetailPage() {
+    const params = useParams();
+    const id = params?.id as string;
     const [doctor, setDoctor] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!id) return;
         doctorService
-            .getById(params.id)
+            .getById(id)
             .then((data: any) => {
                 console.log("DOCTOR DETAIL =>", data);
                 setDoctor(data?.data || null);
@@ -113,7 +114,7 @@ export default function DoctorDetailPage({
                                         {doctor.full_name}
                                     </p>
                                     <p className="text-sm text-slate-400">
-                                        {doctor.specialization} • {doctor.qualification}
+                                        {doctor.specialization || "General"} • {doctor.qualification || "MD"}
                                     </p>
                                 </div>
                             </div>
@@ -204,10 +205,38 @@ export default function DoctorDetailPage({
                                         Experience
                                     </p>
                                     <p className="text-sm font-bold text-slate-800">
-                                        {doctor.experience || 0} Years
+                                        {doctor.experience_years || 0} Years
                                     </p>
                                 </div>
                             </div>
+
+                            {doctor.reg_number && (
+                                <div className="bg-slate-50 rounded-2xl px-4 py-3 flex items-center gap-3">
+                                    <Activity className="w-5 h-5 text-slate-400" />
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            Reg. Number
+                                        </p>
+                                        <p className="text-sm font-bold text-slate-800">
+                                            {doctor.reg_number}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {doctor.consultation_preferences && (
+                                <div className="bg-slate-50 rounded-2xl px-4 py-3 flex items-center gap-3">
+                                    <Video className="w-5 h-5 text-slate-400" />
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            Preferences
+                                        </p>
+                                        <p className="text-sm font-bold text-slate-800">
+                                            {doctor.consultation_preferences}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="bg-slate-50 rounded-2xl px-4 py-3 flex items-center gap-3">
                                 <Users className="w-5 h-5 text-slate-400" />

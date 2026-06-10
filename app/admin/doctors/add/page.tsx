@@ -103,7 +103,7 @@ function AddDoctorForm() {
                     router.push("/admin/doctors");
                 }
             } catch (error: any) {
-                if (error.name === "AbortError") return;
+                if (error?.name === "AbortError" || error === "Component unmounted") return;
                 toast.error("Failed to load doctor data");
                 router.push("/admin/doctors");
             } finally {
@@ -112,7 +112,7 @@ function AddDoctorForm() {
         };
 
         fetchDoctor();
-        return () => controller.abort("Component unmounted");
+        return () => controller.abort();
     }, [isEditMode, doctorId]);
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

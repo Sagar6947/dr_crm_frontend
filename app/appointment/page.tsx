@@ -26,7 +26,7 @@ import {
     Trash2,
     X,
 } from "lucide-react";
-import { clinicService, geoService, appointmentService, patientService } from "@/lib/api";
+import { clinicService, geoService, appointmentService, patientService, doctorService } from "@/lib/api";
 
 // --- MOCK DATA ---
 const TIME_SLOTS = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
@@ -47,6 +47,7 @@ type FormData = {
     clinic: string;
     clinicId: string;
     doctorId: string;
+    slotId: string;
     consultationMode: "video" | "clinic" | "phone";
     date: string;
     time: string;
@@ -71,6 +72,7 @@ const INITIAL_DATA: FormData = {
     clinic: "",
     clinicId: "",
     doctorId: "",
+    slotId: "",
     consultationMode: "video",
     date: "",
     time: "",
@@ -103,6 +105,9 @@ export default function AppointmentWizard() {
     const [reschedulingAppointmentId, setReschedulingAppointmentId] = useState<string | null>(null);
     const [rescheduleDate, setRescheduleDate] = useState("");
     const [rescheduleTime, setRescheduleTime] = useState("");
+    const [rescheduleSlotId, setRescheduleSlotId] = useState("");
+    const [rescheduleSlots, setRescheduleSlots] = useState<any[]>([]);
+    const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
     const [rescheduledSlipAppointment, setRescheduledSlipAppointment] = useState<any>(null);
     const [cancellationConfirmId, setCancellationConfirmId] = useState<string | null>(null);
     const [existingPatientName, setExistingPatientName] = useState("Gourav Jain");
@@ -185,6 +190,7 @@ export default function AppointmentWizard() {
                 phone: formData.phone,
                 clinic_id: formData.clinicId,
                 doctor_id: formData.doctorId,
+                slot_id: formData.slotId,
                 state: formData.stateName,
                 city: formData.city,
                 appointment_date: formData.date,
@@ -322,6 +328,12 @@ export default function AppointmentWizard() {
                                 setRescheduleDate={setRescheduleDate}
                                 rescheduleTime={rescheduleTime}
                                 setRescheduleTime={setRescheduleTime}
+                                rescheduleSlotId={rescheduleSlotId}
+                                setRescheduleSlotId={setRescheduleSlotId}
+                                rescheduleSlots={rescheduleSlots}
+                                setRescheduleSlots={setRescheduleSlots}
+                                loadingRescheduleSlots={loadingRescheduleSlots}
+                                setLoadingRescheduleSlots={setLoadingRescheduleSlots}
                                 setRescheduledSlipAppointment={setRescheduledSlipAppointment}
                                 cancellationConfirmId={cancellationConfirmId}
                                 setCancellationConfirmId={setCancellationConfirmId}
@@ -376,7 +388,11 @@ export default function AppointmentWizard() {
                                     >
                                         <ChevronLeft className="w-4 h-4" /> Previous
                                     </button>
-                                    <button type="submit" className="btn-primary gap-2 !px-12 !py-4">
+                                    <button
+                                        type="submit"
+                                        disabled={currentStep === 4 && !formData.time}
+                                        className={`btn-primary gap-2 !px-12 !py-4 ${(currentStep === 4 && !formData.time) ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    >
                                         {currentStep === 6 ? "Confirm Appointment" : "Continue"} <ChevronRight className="w-4 h-4" />
                                     </button>
                                 </>
@@ -443,6 +459,12 @@ interface StepProps {
     setRescheduleDate?: (date: string) => void;
     rescheduleTime?: string;
     setRescheduleTime?: (time: string) => void;
+    rescheduleSlotId?: string;
+    setRescheduleSlotId?: (id: string) => void;
+    rescheduleSlots?: any[];
+    setRescheduleSlots?: (slots: any[]) => void;
+    loadingRescheduleSlots?: boolean;
+    setLoadingRescheduleSlots?: (loading: boolean) => void;
     setRescheduledSlipAppointment?: (appt: any) => void;
     cancellationConfirmId?: string | null;
     setCancellationConfirmId?: (id: string | null) => void;
@@ -512,6 +534,12 @@ const Step1 = ({
     setRescheduleDate = () => { },
     rescheduleTime = "",
     setRescheduleTime = () => { },
+    rescheduleSlotId = "",
+    setRescheduleSlotId = () => { },
+    rescheduleSlots = [],
+    setRescheduleSlots = () => { },
+    loadingRescheduleSlots = false,
+    setLoadingRescheduleSlots = () => { },
     setRescheduledSlipAppointment = () => { },
     cancellationConfirmId = null,
     setCancellationConfirmId = () => { },
@@ -614,13 +642,34 @@ const Step1 = ({
         setReschedulingAppointmentId(appt.id);
         setRescheduleDate(appt.date);
         setRescheduleTime(appt.time);
+        setRescheduleSlotId("");
+        setRescheduleSlots([]);
     };
 
+    useEffect(() => {
+        if (!reschedulingAppointmentId || !rescheduleDate) return;
+        
+        const appt = appointments.find(a => a.id === reschedulingAppointmentId);
+        if (!appt || !appt.doctorId || !appt.clinicId) return;
+
+        setLoadingRescheduleSlots(true);
+        doctorService.getSlots(appt.doctorId, appt.clinicId, rescheduleDate)
+            .then((res: any) => {
+                const availableSlots = (res.data || []).filter((s: any) => s.status === 'available');
+                setRescheduleSlots(availableSlots);
+            })
+            .catch((err: any) => {
+                console.error("Failed to fetch slots for reschedule", err);
+                setRescheduleSlots([]);
+            })
+            .finally(() => setLoadingRescheduleSlots(false));
+    }, [reschedulingAppointmentId, rescheduleDate, appointments]);
+
     const handleSaveReschedule = async (id: string) => {
-        if (!rescheduleDate || !rescheduleTime) return;
+        if (!rescheduleDate || !rescheduleTime || !rescheduleSlotId) return;
 
         try {
-            await appointmentService.rescheduleAppointment(id, rescheduleDate, rescheduleTime);
+            await appointmentService.rescheduleAppointment(id, rescheduleDate, rescheduleTime, rescheduleSlotId);
             setAppointments((prev) => {
                 const updated = prev.map((appt) =>
                     appt.id === id
@@ -889,18 +938,31 @@ const Step1 = ({
                                                                 </div>
                                                                 <div className="space-y-1.5">
                                                                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">New Available Slots *</label>
-                                                                    <div className="grid grid-cols-3 gap-1.5">
-                                                                        {TIME_SLOTS.map((slot) => (
-                                                                            <button
-                                                                                key={slot}
-                                                                                type="button"
-                                                                                onClick={() => setRescheduleTime(slot)}
-                                                                                className={`py-2 px-1 rounded-lg text-[9px] font-bold border transition-all ${rescheduleTime === slot ? "bg-medical-teal border-medical-teal text-white shadow-sm" : "bg-white border-slate-200 text-slate-500 hover:border-teal-200"}`}
-                                                                            >
-                                                                                {slot}
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
+                                                                    {loadingRescheduleSlots ? (
+                                                                        <div className="text-xs text-slate-400 p-2 flex items-center gap-2">
+                                                                            <Loader2 className="w-3 h-3 animate-spin" /> Loading...
+                                                                        </div>
+                                                                    ) : rescheduleSlots.length === 0 ? (
+                                                                        <div className="text-xs text-slate-400 p-2 border border-dashed rounded-lg">
+                                                                            No slots available.
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="grid grid-cols-3 gap-1.5">
+                                                                            {rescheduleSlots.map((slot) => (
+                                                                                <button
+                                                                                    key={slot.id}
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setRescheduleTime(slot.slot_time);
+                                                                                        setRescheduleSlotId(String(slot.id));
+                                                                                    }}
+                                                                                    className={`py-2 px-1 rounded-lg text-[9px] font-bold border transition-all ${rescheduleTime === slot.slot_time ? "bg-medical-teal border-medical-teal text-white shadow-sm" : "bg-white border-slate-200 text-slate-500 hover:border-teal-200"}`}
+                                                                                >
+                                                                                    {slot.slot_time}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div className="flex justify-end gap-2 pt-2">
@@ -1376,46 +1438,86 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
 };
 
 // --- STEP 4: Date & Time Schedule ---
-const Step4Schedule = ({ formData, updateFields }: StepProps) => (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 4: Schedule Details</h2>
-            <p className="text-slate-500 text-sm">Select when you want your <span className="font-bold text-medical-teal capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</span> appointment.</p>
-        </div>
+const Step4Schedule = ({ formData, updateFields }: StepProps) => {
+    const [slots, setSlots] = useState<any[]>([]);
+    const [loadingSlots, setLoadingSlots] = useState(false);
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            <div className="space-y-4">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Select Date *</label>
-                <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                    <input
-                        type="date"
-                        className="w-full bg-slate-50 border-slate-100 border p-5 pl-12 rounded-[24px] focus:ring-2 focus:ring-medical-teal outline-none transition-all font-medium text-slate-700"
-                        value={formData.date}
-                        onChange={(e) => updateFields({ date: e.target.value })}
-                        required
-                        min={new Date().toISOString().split("T")[0]}
-                    />
-                </div>
+    useEffect(() => {
+        if (!formData.doctorId || !formData.clinicId || !formData.date) {
+            setSlots([]);
+            return;
+        }
+        setLoadingSlots(true);
+        doctorService.getSlots(formData.doctorId, formData.clinicId, formData.date)
+            .then((res: any) => {
+                // Filter only available slots for booking
+                const availableSlots = (res.data || []).filter((s: any) => s.status === 'available');
+                setSlots(availableSlots);
+            })
+            .catch((err: any) => {
+                console.error("Failed to fetch slots", err);
+                setSlots([]);
+            })
+            .finally(() => setLoadingSlots(false));
+    }, [formData.doctorId, formData.clinicId, formData.date]);
+
+    return (
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 4: Schedule Details</h2>
+                <p className="text-slate-500 text-sm">Select when you want your <span className="font-bold text-medical-teal capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</span> appointment.</p>
             </div>
-            <div className="space-y-4">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Slots *</label>
-                <div className="grid grid-cols-3 gap-2">
-                    {TIME_SLOTS.map(slot => (
-                        <button
-                            key={slot}
-                            type="button"
-                            onClick={() => updateFields({ time: slot })}
-                            className={`py-3 px-1 rounded-xl text-[10px] font-bold tracking-tighter border transition-all ${formData.time === slot ? "bg-medical-teal border-medical-teal text-white shadow-lg shadow-teal-100" : "bg-white border-slate-100 text-slate-500 hover:border-teal-200"}`}
-                        >
-                            {slot}
-                        </button>
-                    ))}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-4">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Select Date *</label>
+                    <div className="relative">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                        <input
+                            type="date"
+                            className="w-full bg-slate-50 border-slate-100 border p-5 pl-12 rounded-[24px] focus:ring-2 focus:ring-medical-teal outline-none transition-all font-medium text-slate-700"
+                            value={formData.date}
+                            onChange={(e) => {
+                                updateFields({ date: e.target.value, time: "", slotId: "" });
+                            }}
+                            required
+                            min={new Date().toISOString().split("T")[0]}
+                        />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Slots *</label>
+                    {!formData.date ? (
+                        <div className="p-4 bg-slate-50 rounded-xl text-slate-400 text-sm text-center border border-dashed border-slate-200">
+                            Please select a date first.
+                        </div>
+                    ) : loadingSlots ? (
+                        <div className="flex items-center gap-2 p-4 bg-slate-50 rounded-xl text-slate-400 text-sm">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Loading slots...
+                        </div>
+                    ) : slots.length === 0 ? (
+                        <div className="p-4 bg-slate-50 rounded-xl text-slate-400 text-sm text-center border border-dashed border-slate-200">
+                            No slots available for the selected date.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                            {slots.map((slot) => (
+                                <button
+                                    key={slot.id}
+                                    type="button"
+                                    onClick={() => updateFields({ time: slot.slot_time, slotId: String(slot.id) })}
+                                    className={`py-3 px-1 rounded-xl text-[10px] font-bold tracking-tighter border transition-all ${formData.slotId === String(slot.id) ? "bg-medical-teal border-medical-teal text-white shadow-lg shadow-teal-100" : "bg-white border-slate-100 text-slate-500 hover:border-teal-200"}`}
+                                >
+                                    {slot.slot_time}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 // --- STEP 5: Medical Info ---
 const Step5Medical = ({ formData, updateFields }: StepProps) => (

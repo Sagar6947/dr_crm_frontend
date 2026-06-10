@@ -135,6 +135,7 @@ export default function DoctorsManager() {
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Contact</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Specialization</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Experience</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Preferences</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Status</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Joined On</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Action</th>
@@ -143,7 +144,7 @@ export default function DoctorsManager() {
                             <tbody className="divide-y divide-slate-50">
                                 {isLoading ? (
                                     <tr>
-                                        <td colSpan={7} className="px-8 py-20 text-center">
+                                        <td colSpan={8} className="px-8 py-20 text-center">
                                             <div className="flex flex-col items-center gap-3">
                                                 <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-medical-teal animate-bounce">
                                                     <Stethoscope className="w-6 h-6" />
@@ -156,7 +157,7 @@ export default function DoctorsManager() {
                                     </tr>
                                 ) : doctors.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-8 py-10 text-center text-slate-400 font-medium text-sm">
+                                        <td colSpan={8} className="px-8 py-10 text-center text-slate-400 font-medium text-sm">
                                             No doctors found.
                                         </td>
                                     </tr>
@@ -218,6 +219,17 @@ export default function DoctorsManager() {
                                                     <span className="text-sm font-medium text-slate-700">
                                                         {doctor.experience_years ? `${doctor.experience_years} yrs` : "—"}
                                                     </span>
+                                                </div>
+                                            </td>
+
+                                            {/* Preferences */}
+                                            <td className="px-8 py-6">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {doctor.consultation_preferences ? doctor.consultation_preferences.split(',').map((pref: string, idx: number) => (
+                                                        <span key={idx} className="text-[8px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 uppercase tracking-widest border border-slate-200">
+                                                            {pref.trim()}
+                                                        </span>
+                                                    )) : <span className="text-slate-400 text-sm">—</span>}
                                                 </div>
                                             </td>
 

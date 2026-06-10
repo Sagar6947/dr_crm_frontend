@@ -50,7 +50,9 @@ export async function request(endpoint: string, options: RequestInit = {}) {
 
     return data;
   } catch (error: any) {
-    console.error("API Error:", error);
+    if (error?.name !== "AbortError" && error !== "Component unmounted") {
+      console.error("API Error:", error);
+    }
     throw error;
   }
 }
@@ -218,6 +220,27 @@ export const doctorService = {
         method: 'DELETE',
         signal
     }),
+    getSlots: (doctorId: string, clinicId: string, date?: string, signal?: AbortSignal) => {
+        let url = `/doctor/getDoctorSlots?doctor_id=${doctorId}&clinic_id=${clinicId}`;
+        if (date) url += `&date=${date}`;
+        return request(url, { signal });
+    },
+    addSlot: (formData: any, signal?: AbortSignal) => {
+        const body = new URLSearchParams(formData).toString();
+        return request('/doctor/addDoctorSlot', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
+    deleteSlot: (slotId: string, signal?: AbortSignal) => {
+        const body = new URLSearchParams({ slot_id: slotId }).toString();
+        return request('/doctor/deleteDoctorSlot', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
 };
 
 export const billingService = {
@@ -307,8 +330,8 @@ export const appointmentService = {
             signal
         });
     },
-    rescheduleAppointment: (appointment_id: string, date: string, time: string, signal?: AbortSignal) => {
-        const body = new URLSearchParams({ appointment_id, date, time }).toString();
+    rescheduleAppointment: (id: string, date: string, time: string, slotId: string, signal?: AbortSignal) => {
+        const body = new URLSearchParams({ appointment_id: id, date, time, slot_id: slotId }).toString();
         return request('/appointment/reschedule', {
             method: 'POST',
             body,
