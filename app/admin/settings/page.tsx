@@ -1,19 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { settingsService } from "@/lib/api";
 import {
     Settings, User, Bell, Shield, Palette,
     Building2, ChevronRight, Save, Camera,
     Moon, Sun, Globe, Lock, Mail, Phone,
-    ToggleLeft, ToggleRight,
+    ToggleLeft, ToggleRight, CreditCard, Loader2, Eye, EyeOff
 } from "lucide-react";
 
-type SettingTab = "profile" | "clinic" | "notifications" | "security" | "appearance";
+type SettingTab = "profile" | "clinic" | "notifications" | "security" | "appearance" | "payment";
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<SettingTab>("profile");
     const [saved, setSaved] = useState(false);
+    const [loadingPayment, setLoadingPayment] = useState(false);
+    const [showKeys, setShowKeys] = useState({ testId: false, testSecret: false, liveId: false, liveSecret: false });
 
     const [profile, setProfile] = useState({
         name: "Dr. Amit Patel",
@@ -50,7 +53,37 @@ export default function SettingsPage() {
         dateFormat: "DD MMM YYYY",
     });
 
+    const [paymentSettings, setPaymentSettings] = useState({
+        razorpay_mode: "test",
+        razorpay_test_key_id: "",
+        razorpay_test_key_secret: "",
+        razorpay_live_key_id: "",
+        razorpay_live_key_secret: ""
+    });
+
+    useEffect(() => {
+        setLoadingPayment(true);
+        settingsService.getSettings()
+            .then((res: any) => {
+                if (res.data) {
+                    setPaymentSettings(prev => ({ ...prev, ...res.data }));
+                }
+            })
+            .catch(err => console.error(err))
+            .finally(() => setLoadingPayment(false));
+    }, []);
+
     const handleSave = () => {
+        if (activeTab === "payment") {
+            setSaved(false);
+            settingsService.updateSettings(paymentSettings)
+                .then(() => {
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 2500);
+                })
+                .catch(err => console.error(err));
+            return;
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
     };
@@ -60,6 +93,7 @@ export default function SettingsPage() {
         { key: "clinic", label: "Clinic Info", icon: Building2 },
         { key: "notifications", label: "Notifications", icon: Bell },
         { key: "security", label: "Security", icon: Shield },
+        { key: "payment", label: "Payment Gateway", icon: CreditCard },
         { key: "appearance", label: "Appearance", icon: Palette },
     ];
 
@@ -298,6 +332,144 @@ export default function SettingsPage() {
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* ── PAYMENT GATEWAY ── */}
+                        {activeTab === "payment" && (
+                            <div className="medical-card !rounded-3xl space-y-6">
+                                <div className="flex items-center gap-3 pb-4 border-b border-slate-50">
+                                    <div className="w-10 h-10 bg-teal-50 rounded-2xl flex items-center justify-center text-medical-teal">
+                                        <CreditCard className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800">Payment Gateway</p>
+                                        <p className="text-xs text-slate-400">Manage Razorpay API Keys and Environment Mode</p>
+                                    </div>
+                                </div>
+
+                                {loadingPayment ? (
+                                    <div className="flex justify-center p-8">
+                                        <Loader2 className="w-6 h-6 animate-spin text-medical-teal" />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 text-sm">Gateway Mode</h4>
+                                                <p className="text-xs text-slate-500 mt-1">Toggle between Test and Live processing</p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPaymentSettings(p => ({ ...p, razorpay_mode: p.razorpay_mode === 'live' ? 'test' : 'live' }))}
+                                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                                                        paymentSettings.razorpay_mode === 'live' ? 'bg-medical-teal' : 'bg-slate-300'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm ${
+                                                            paymentSettings.razorpay_mode === 'live' ? 'translate-x-6' : 'translate-x-1'
+                                                        }`}
+                                                    />
+                                                </button>
+                                                <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${paymentSettings.razorpay_mode === 'live' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                                    {paymentSettings.razorpay_mode} mode
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                            {/* Test Keys */}
+                                            <div className="space-y-4">
+                                                <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                                                    <Shield className="w-4 h-4 text-amber-500" />
+                                                    Test Environment
+                                                </h4>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Test Key ID</label>
+                                                    <div className="relative group">
+                                                        <input
+                                                            type={showKeys.testId ? "text" : "password"}
+                                                            value={paymentSettings.razorpay_test_key_id}
+                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_test_key_id: e.target.value})}
+                                                            className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setShowKeys({...showKeys, testId: !showKeys.testId})}
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                                        >
+                                                            {showKeys.testId ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Test Key Secret</label>
+                                                    <div className="relative group">
+                                                        <input
+                                                            type={showKeys.testSecret ? "text" : "password"}
+                                                            value={paymentSettings.razorpay_test_key_secret}
+                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_test_key_secret: e.target.value})}
+                                                            className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setShowKeys({...showKeys, testSecret: !showKeys.testSecret})}
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                                        >
+                                                            {showKeys.testSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Live Keys */}
+                                            <div className="space-y-4">
+                                                <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                                                    <Shield className="w-4 h-4 text-emerald-500" />
+                                                    Live Environment
+                                                </h4>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Live Key ID</label>
+                                                    <div className="relative group">
+                                                        <input
+                                                            type={showKeys.liveId ? "text" : "password"}
+                                                            value={paymentSettings.razorpay_live_key_id}
+                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_live_key_id: e.target.value})}
+                                                            className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setShowKeys({...showKeys, liveId: !showKeys.liveId})}
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                                        >
+                                                            {showKeys.liveId ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Live Key Secret</label>
+                                                    <div className="relative group">
+                                                        <input
+                                                            type={showKeys.liveSecret ? "text" : "password"}
+                                                            value={paymentSettings.razorpay_live_key_secret}
+                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_live_key_secret: e.target.value})}
+                                                            className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setShowKeys({...showKeys, liveSecret: !showKeys.liveSecret})}
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                                        >
+                                                            {showKeys.liveSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 

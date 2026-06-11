@@ -10,7 +10,8 @@ import {
     Hospital,
     ChevronLeft,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Pencil
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -27,6 +28,8 @@ export default function DoctorManageSlotsPage() {
     const [selectedClinicId, setSelectedClinicId] = useState("");
     const [selectedDate, setSelectedDate] = useState("");
     const [newSlotTime, setNewSlotTime] = useState("");
+    const [consultationMode, setConsultationMode] = useState("all");
+    const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
     
     const [loading, setLoading] = useState(true);
     const [loadingSlots, setLoadingSlots] = useState(false);
@@ -57,7 +60,9 @@ export default function DoctorManageSlotsPage() {
         setLoadingSlots(true);
         doctorService.getSlots(id, selectedClinicId, selectedDate)
             .then((res: any) => {
-                setSlots(res.data || []);
+                const fetchedSlots = res.data || [];
+                const filtered = fetchedSlots.filter((s: any) => s.slot_date === selectedDate);
+                setSlots(filtered);
             })
             .catch((err) => {
                 console.error("Failed to fetch slots", err);
@@ -69,7 +74,7 @@ export default function DoctorManageSlotsPage() {
         fetchSlots();
     }, [selectedClinicId, selectedDate]);
 
-    const handleAddSlot = (e: React.FormEvent) => {
+    const handleSaveSlot = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedClinicId || !selectedDate || !newSlotTime) {
             window.alert("Please select clinic, date, and time");
@@ -85,21 +90,61 @@ export default function DoctorManageSlotsPage() {
         hour = hour ? hour : 12;
         const formattedTime = `${hour.toString().padStart(2, '0')}:${m} ${ampm}`;
 
-        doctorService.addSlot({
+        const payload = {
             doctor_id: id,
             clinic_id: selectedClinicId,
             slot_date: selectedDate,
-            slot_time: formattedTime
-        })
-        .then(() => {
-            window.alert("Slot added successfully");
-            setNewSlotTime("");
-            fetchSlots();
-        })
-        .catch((err: any) => {
-            window.alert(err?.message || "Failed to add slot");
-        })
-        .finally(() => setIsAdding(false));
+            slot_time: formattedTime,
+            consultation_mode: consultationMode
+        };
+
+        if (editingSlotId) {
+            doctorService.editSlot({ slot_id: editingSlotId, slot_time: formattedTime, consultation_mode: consultationMode })
+            .then(() => {
+                window.alert("Slot updated successfully");
+                setNewSlotTime("");
+                setConsultationMode("all");
+                setEditingSlotId(null);
+                fetchSlots();
+            })
+            .catch((err: any) => {
+                window.alert(err?.message || "Failed to update slot");
+            })
+            .finally(() => setIsAdding(false));
+        } else {
+            doctorService.addSlot(payload)
+            .then(() => {
+                window.alert("Slot added successfully");
+                setNewSlotTime("");
+                fetchSlots();
+            })
+            .catch((err: any) => {
+                window.alert(err?.message || "Failed to add slot");
+            })
+            .finally(() => setIsAdding(false));
+        }
+    };
+
+    const handleEditClick = (slot: any) => {
+        setEditingSlotId(slot.id);
+        setConsultationMode(slot.consultation_mode || "all");
+        if (slot.slot_time) {
+            try {
+                const [time, modifier] = slot.slot_time.split(' ');
+                let [hours, minutes] = time.split(':');
+                if (hours === '12') hours = '00';
+                if (modifier === 'PM') hours = (parseInt(hours, 10) + 12).toString();
+                setNewSlotTime(`${hours.toString().padStart(2, '0')}:${minutes}`);
+            } catch (e) {
+                setNewSlotTime("");
+            }
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingSlotId(null);
+        setNewSlotTime("");
+        setConsultationMode("all");
     };
 
     const handleDeleteSlot = (slotId: string) => {
@@ -159,7 +204,7 @@ export default function DoctorManageSlotsPage() {
                         <div className="p-6 bg-white border border-slate-100 rounded-[32px] shadow-sm space-y-6">
                             <h3 className="font-bold text-slate-800 text-lg">Slot Configuration</h3>
                             
-                            <form onSubmit={handleAddSlot} className="space-y-4">
+                            <form onSubmit={handleSaveSlot} className="space-y-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Select Clinic</label>
                                     <div className="relative group">
@@ -212,14 +257,39 @@ export default function DoctorManageSlotsPage() {
                                     </div>
                                 </div>
 
-                                <button 
-                                    type="submit" 
-                                    disabled={!selectedClinicId || !selectedDate || !newSlotTime || isAdding}
-                                    className="w-full p-4 rounded-[24px] bg-medical-teal text-white font-bold tracking-wide hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                    Add Slot
-                                </button>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Consultation Mode</label>
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-100 p-4 rounded-[24px] focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium text-slate-700 appearance-none"
+                                        value={consultationMode}
+                                        onChange={(e) => setConsultationMode(e.target.value)}
+                                    >
+                                        <option value="all">All Modes</option>
+                                        <option value="video">Online Video</option>
+                                        <option value="clinic">Offline Clinic</option>
+                                        <option value="phone">Phone Call</option>
+                                    </select>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button 
+                                        type="submit" 
+                                        disabled={!selectedClinicId || !selectedDate || !newSlotTime || isAdding}
+                                        className="flex-1 p-4 rounded-[24px] bg-medical-teal text-white font-bold tracking-wide hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                        {editingSlotId ? "Update Slot" : "Add Slot"}
+                                    </button>
+                                    {editingSlotId && (
+                                        <button 
+                                            type="button" 
+                                            onClick={handleCancelEdit}
+                                            className="px-6 p-4 rounded-[24px] bg-slate-100 text-slate-600 font-bold tracking-wide hover:bg-slate-200 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -270,15 +340,28 @@ export default function DoctorManageSlotsPage() {
                                                 {slot.status}
                                             </span>
 
+                                            <span className="text-[9px] px-2 py-0.5 mt-1 rounded-full border bg-slate-50 text-slate-500 border-slate-200 capitalize">
+                                                {slot.consultation_mode || 'all'}
+                                            </span>
+
                                             {slot.status === 'available' && (
-                                                <button 
-                                                    onClick={() => handleDeleteSlot(slot.id)}
-                                                    disabled={isDeleting === slot.id}
-                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 transition-all shadow-sm disabled:opacity-50"
-                                                    title="Remove slot"
-                                                >
-                                                    {isDeleting === slot.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                                                </button>
+                                                <>
+                                                    <button 
+                                                        onClick={() => handleEditClick(slot)}
+                                                        className="absolute -top-2 -right-8 w-6 h-6 bg-white border border-blue-100 text-blue-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm"
+                                                        title="Edit slot"
+                                                    >
+                                                        <Pencil className="w-3 h-3" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteSlot(slot.id)}
+                                                        disabled={isDeleting === slot.id}
+                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 transition-all shadow-sm disabled:opacity-50"
+                                                        title="Remove slot"
+                                                    >
+                                                        {isDeleting === slot.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     ))}
