@@ -233,6 +233,14 @@ export const doctorService = {
             signal
         });
     },
+    editSlot: (formData: any, signal?: AbortSignal) => {
+        const body = new URLSearchParams(formData).toString();
+        return request('/doctor/editDoctorSlot', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
     deleteSlot: (slotId: string, signal?: AbortSignal) => {
         const body = new URLSearchParams({ slot_id: slotId }).toString();
         return request('/doctor/deleteDoctorSlot', {
@@ -363,6 +371,22 @@ export const authService = {
     return request('/admin/login', {
       method: 'POST',
       body: formData,
+    });
+  },
+};
+
+export const settingsService = {
+  getSettings: (signal?: AbortSignal) => {
+    return request('/settings', { signal });
+  },
+  updateSettings: (data: any, signal?: AbortSignal) => {
+    return request('/settings/update', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal,
     });
   },
 };

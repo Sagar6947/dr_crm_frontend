@@ -655,7 +655,11 @@ const Step1 = ({
         setLoadingRescheduleSlots(true);
         doctorService.getSlots(appt.doctorId, appt.clinicId, rescheduleDate)
             .then((res: any) => {
-                const availableSlots = (res.data || []).filter((s: any) => s.status === 'available');
+                const availableSlots = (res.data || []).filter((s: any) => 
+                    s.status === 'available' && 
+                    s.slot_date === rescheduleDate &&
+                    (!s.consultation_mode || s.consultation_mode === 'all' || !appt.mode || s.consultation_mode === appt.mode)
+                );
                 setRescheduleSlots(availableSlots);
             })
             .catch((err: any) => {
@@ -1450,8 +1454,12 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => {
         setLoadingSlots(true);
         doctorService.getSlots(formData.doctorId, formData.clinicId, formData.date)
             .then((res: any) => {
-                // Filter only available slots for booking
-                const availableSlots = (res.data || []).filter((s: any) => s.status === 'available');
+                // Filter only available slots for booking, by date, and by consultation mode
+                const availableSlots = (res.data || []).filter((s: any) => 
+                    s.status === 'available' && 
+                    s.slot_date === formData.date &&
+                    (!s.consultation_mode || s.consultation_mode === 'all' || s.consultation_mode === formData.consultationMode)
+                );
                 setSlots(availableSlots);
             })
             .catch((err: any) => {
