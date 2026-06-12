@@ -267,7 +267,7 @@ export default function DoctorManageSlotsPage() {
                                         <option value="all">All Modes</option>
                                         <option value="video">Online Video</option>
                                         <option value="clinic">Offline Clinic</option>
-                                        <option value="phone">Phone Call</option>
+                                        <option value="phone">Proxy (By attendant)</option>
                                     </select>
                                 </div>
 

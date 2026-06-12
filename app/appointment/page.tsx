@@ -892,7 +892,7 @@ const Step1 = ({
                                                     </span>
                                                 </div>
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded border border-slate-100 capitalize">
-                                                    {appt.consultationMode === "clinic" ? "Offline Clinic" : appt.consultationMode === "video" ? "Online Video" : "Phone Call"}
+                                                    {appt.consultationMode === "clinic" ? "Offline Clinic" : appt.consultationMode === "video" ? "Online Video" : "Proxy (By attendant)"}
                                                 </span>
                                             </div>
 
@@ -1071,7 +1071,7 @@ const Step2ConsultationMode = ({ formData, updateFields }: StepProps) => (
             />
             <ModeCard
                 id="phone"
-                title="Phone Call"
+                title="Proxy (By attendant)"
                 desc="Direct call with the doctor"
                 icon={Phone}
                 active={formData.consultationMode === "phone"}
@@ -1089,7 +1089,7 @@ const Step2ConsultationMode = ({ formData, updateFields }: StepProps) => (
                 </div>
                 <div>
                     <p className="text-[10px] font-bold text-medical-teal uppercase tracking-widest mb-0.5">Selected Mode</p>
-                    <p className="text-sm font-bold text-slate-900 capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                    <p className="text-sm font-bold text-slate-900 capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)"}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">Only doctors offering this mode will be shown in the next step.</p>
                 </div>
             </div>
@@ -1180,7 +1180,7 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
     }, [formData.clinicId]);
 
     // Mode label helper
-    const modeLabel = formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call";
+    const modeLabel = formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)";
 
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1381,10 +1381,10 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
                 {/* Right: Doctors (filtered by mode) */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Available Specialists</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Select Available Specialist</label>
                         {formData.clinicId && !loadingDoctors && doctors.length > 0 && (
                             <span className="text-[9px] font-bold text-medical-teal uppercase tracking-widest bg-teal-50 px-2 py-1 rounded-full border border-teal-100">
-                                {filteredDoctors.length} of {doctors.length} match your mode
+                                {filteredDoctors.length} dr. match your mode
                             </span>
                         )}
                     </div>
@@ -1457,12 +1457,54 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => {
         setLoadingSlots(true);
         doctorService.getSlots(formData.doctorId, formData.clinicId, formData.date)
             .then((res: any) => {
-                // Filter only available slots for booking, by date, and by consultation mode
-                const availableSlots = (res.data || []).filter((s: any) => 
-                    s.status === 'available' && 
-                    s.slot_date === formData.date &&
-                    (!s.consultation_mode || s.consultation_mode === 'all' || s.consultation_mode === formData.consultationMode)
-                );
+                // Get local today's date in YYYY-MM-DD
+                const now = new Date();
+                const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                const isToday = formData.date === localToday;
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                // Filter only available slots for booking, by date, by consultation mode, and future times if today
+                const availableSlots = (res.data || []).filter((s: any) => {
+                    const isAvailable = s.status === 'available' && s.slot_date === formData.date;
+                    const modeMatches = (!s.consultation_mode || s.consultation_mode === 'all' || s.consultation_mode === formData.consultationMode);
+                    
+                    if (!isAvailable || !modeMatches) return false;
+
+                    if (isToday && s.slot_time) {
+                        const match = s.slot_time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                        if (match) {
+                            let hours = parseInt(match[1], 10);
+                            const minutes = parseInt(match[2], 10);
+                            const ampm = match[3].toUpperCase();
+                            if (ampm === 'PM' && hours < 12) hours += 12;
+                            if (ampm === 'AM' && hours === 12) hours = 0;
+                            const slotMinutes = hours * 60 + minutes;
+                            
+                            // Filter out past slots
+                            if (slotMinutes <= currentMinutes) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                });
+
+                // Sort the slots chronologically
+                availableSlots.sort((a: any, b: any) => {
+                    const getMins = (timeStr: string) => {
+                        if (!timeStr) return 0;
+                        const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                        if (!match) return 0;
+                        let h = parseInt(match[1], 10);
+                        const m = parseInt(match[2], 10);
+                        const ampm = match[3].toUpperCase();
+                        if (ampm === 'PM' && h < 12) h += 12;
+                        if (ampm === 'AM' && h === 12) h = 0;
+                        return h * 60 + m;
+                    };
+                    return getMins(a.slot_time) - getMins(b.slot_time);
+                });
+
                 setSlots(availableSlots);
             })
             .catch((err: any) => {
@@ -1476,7 +1518,7 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => {
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Step 4: Schedule Details</h2>
-                <p className="text-slate-500 text-sm">Select when you want your <span className="font-bold text-medical-teal capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</span> appointment.</p>
+                <p className="text-slate-500 text-sm">Select when you want your <span className="font-bold text-medical-teal capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)"}</span> appointment.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -1601,7 +1643,7 @@ const Step6Payment = ({ formData, updateFields }: StepProps) => (
                     icon={Hospital}
                     onEdit={() => { }}
                     rows={[
-                        { label: "Mode", value: formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call" },
+                        { label: "Mode", value: formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)" },
                         { label: "Facility", value: formData.clinic },
                         { label: "Schedule", value: formData.date && formData.time ? `${formData.date} at ${formData.time}` : "Not set" },
                     ]}
@@ -1714,34 +1756,35 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     }
                 }
             `}</style>
-            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden print:hidden">
+            <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[32px] p-6 md:p-8 shadow-2xl relative overflow-hidden print:hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-50 rounded-full translate-x-20 -translate-y-20 -z-1" />
 
-                <div className="flex items-center justify-between bg-white border border-slate-100 rounded-3xl p-4 shadow-sm mb-12 relative z-10">
-                    <img src="/dr-mahesh-clinic-logo.png" alt="Clinic Logo" className="h-12 w-auto object-contain" />
-                    <div className="bg-teal-50/50 border border-teal-100 rounded-2xl px-5 py-2 text-right">
+                <div className="flex items-center justify-between bg-white border border-slate-100 rounded-2xl p-3 shadow-sm mb-6 relative z-10">
+                    <img src="/dr-mahesh-clinic-logo.png" alt="Clinic Logo" className="h-10 w-auto object-contain" />
+                    <div className="bg-teal-50/50 border border-teal-100 rounded-xl px-4 py-1.5 text-right">
                         <p className="text-[9px] font-bold text-teal-600 uppercase tracking-widest mb-0.5">Booking Amount</p>
-                        <p className="text-base font-bold text-slate-900">₹500 Paid</p>
+                        <p className="text-sm font-bold text-slate-900">₹500 Paid</p>
                     </div>
                 </div>
 
-                <div className="text-center space-y-6 mb-12 relative z-10">
-                    <div className="w-24 h-24 bg-teal-50 text-medical-teal rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-teal-100 rotate-12">
-                        <CheckCircle2 className="w-12 h-12 -rotate-12" />
+                <div className="text-center space-y-3 mb-6 relative z-10">
+                    <div className="w-16 h-16 bg-teal-50 text-medical-teal rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-teal-100 rotate-12">
+                        <CheckCircle2 className="w-8 h-8 -rotate-12" />
                     </div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Registration Complete</h2>
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-50 text-green-600 rounded-full border border-green-100 text-[10px] font-bold uppercase tracking-widest">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> Active Appointment Status
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Registration Complete</h2>
+                     <p className="text-sm text-slate-500 max-w-sm mx-auto leading-tight">Thank you for booking your appointment. Your appointment has been booked successfully.</p>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full border border-green-100 text-[9px] font-bold uppercase tracking-widest">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Active Appointment Status
                     </div>
-                    <p className="text-slate-500 max-w-sm mx-auto">Your medical intake is successful. Our care coordinator will contact you shortly.</p>
+                   
                 </div>
 
-                <div className="bg-slate-50/50 rounded-[40px] border border-slate-100 p-8 space-y-8 mb-10">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="bg-slate-50/50 rounded-3xl border border-slate-100 p-5 space-y-6 mb-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Detail label="Patient ID" value={formData.patientId} accent />
                         <Detail label="Appt ID" value={formData.appointmentId} accent />
                         <Detail label="Patient" value={formData.fullName || "Historical Name"} />
-                        <Detail label="Mode" value={formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"} />
+                        <Detail label="Mode" value={formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)"} />
                         <Detail label="State" value={formData.stateName} />
                         <Detail label="City" value={formData.city} />
                         <Detail label="Clinic" value={formData.clinic} />
@@ -1751,17 +1794,9 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </div>
                 </div>
 
-                <div className="p-8 bg-teal-50 rounded-[32px] border border-teal-100 mb-10 flex items-start gap-4">
-                    <AlertCircle className="w-6 h-6 text-medical-teal shrink-0 mt-1" />
-                    <div className="space-y-1">
-                        <h5 className="font-bold text-medical-teal text-sm">Automated Schedule Locked</h5>
-                        <p className="text-xs text-medical-teal/70 leading-relaxed font-medium">Notifications sent to your registered channels. You can reschedule this appointment within <span className="font-bold">30 days</span> using your Patient ID.</p>
-                    </div>
-                </div>
-
-                <div className="p-8 bg-[#f4fbfa] border border-teal-100 rounded-[32px] mb-10 text-left relative z-10">
-                    <h5 className="font-bold text-[#0f8558] text-base mb-4">Disclaimer:</h5>
-                    <ol className="list-decimal list-outside ml-4 space-y-3 text-xs text-slate-600 font-medium">
+                <div className="p-5 bg-[#f4fbfa] border border-teal-100 rounded-2xl mb-6 text-left relative z-10">
+                    <h5 className="font-bold text-[#0f8558] text-sm mb-2">Disclaimer:</h5>
+                    <ol className="list-decimal list-outside ml-4 space-y-2 text-[11px] text-slate-600 font-medium leading-snug">
                         <li>
                             Booking amount is non-refundable. However, if you are unable to attend your confirmed appointment, you can reschedule within 7 days without paying again.
                         </li>
@@ -1771,11 +1806,11 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </ol>
                 </div>
 
-                <div className="flex gap-4 print:hidden relative z-10">
-                    <Link href="/" className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
+                <div className="flex gap-3 print:hidden relative z-10">
+                    <Link href="/" className="btn-primary w-full justify-center !py-3 !rounded-2xl shadow-xl shadow-teal-600/10 text-sm">
                         Go to Portal
                     </Link>
-                    <button onClick={() => window.print()} className="btn-secondary w-full justify-center !py-5 !rounded-3xl">
+                    <button onClick={() => window.print()} className="btn-secondary w-full justify-center !py-3 !rounded-2xl text-sm">
                         Download / Print Slip
                     </button>
                 </div>
@@ -1808,7 +1843,7 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </div>
                     <div className="p-4 border border-slate-200 rounded-lg">
                         <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Consultation Mode</p>
-                        <p className="font-bold capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                        <p className="font-bold capitalize">{formData.consultationMode === "video" ? "Online Video" : formData.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)"}</p>
                     </div>
                     <div className="p-4 border border-slate-200 rounded-lg">
                         <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Clinic/Location</p>
@@ -1878,7 +1913,7 @@ const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClos
                         <Detail label="Patient ID" value={appointment.patientId} accent />
                         <Detail label="Appt ID" value={appointment.id} accent />
                         <Detail label="Patient" value={appointment.fullName || "Historical Name"} />
-                        <Detail label="Mode" value={appointment.consultationMode === "video" ? "Online Video" : appointment.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"} />
+                        <Detail label="Mode" value={appointment.consultationMode === "video" ? "Online Video" : appointment.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)"} />
                         <Detail label="State" value={appointment.stateName} />
                         <Detail label="City" value={appointment.city} />
                         <Detail label="Clinic" value={appointment.clinic} />
@@ -1933,7 +1968,7 @@ const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClos
                     </div>
                     <div className="p-4 border border-slate-200 rounded-lg">
                         <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Consultation Mode</p>
-                        <p className="font-bold capitalize">{appointment.consultationMode === "video" ? "Online Video" : appointment.consultationMode === "clinic" ? "Offline Clinic" : "Phone Call"}</p>
+                        <p className="font-bold capitalize">{appointment.consultationMode === "video" ? "Online Video" : appointment.consultationMode === "clinic" ? "Offline Clinic" : "Proxy (By attendant)"}</p>
                     </div>
                     <div className="p-4 border border-slate-200 rounded-lg">
                         <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Clinic/Location</p>

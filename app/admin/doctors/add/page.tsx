@@ -404,7 +404,7 @@ function AddDoctorForm() {
                                     <div className="flex flex-wrap gap-2">
                                         {formData.consultant_preference.split(',').map(p => p.trim()).filter(Boolean).map(pref => (
                                             <span key={pref} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-teal-700 text-[10px] font-black uppercase tracking-widest border border-teal-100 animate-in zoom-in duration-200">
-                                                {pref === 'video' ? 'Online Video' : pref === 'clinic' ? 'Offline Clinic' : pref === 'phone' ? 'Phone Call' : pref}
+                                                {pref === 'video' ? 'Online Video' : pref === 'clinic' ? 'Offline Clinic' : pref === 'phone' ? 'Proxy (By attendant)' : pref}
                                                 <button
                                                     type="button"
                                                     disabled={isSubmitting}
@@ -438,7 +438,7 @@ function AddDoctorForm() {
                                         <option value="">+ Add Preference</option>
                                         {!formData.consultant_preference.split(',').map(p=>p.trim()).includes('video') && <option value="video">Online Video</option>}
                                         {!formData.consultant_preference.split(',').map(p=>p.trim()).includes('clinic') && <option value="clinic">Offline Clinic</option>}
-                                        {!formData.consultant_preference.split(',').map(p=>p.trim()).includes('phone') && <option value="phone">Phone Call</option>}
+                                        {!formData.consultant_preference.split(',').map(p=>p.trim()).includes('phone') && <option value="phone">Proxy (By attendant)</option>}
                                     </select>
                                 </div>
                             </div>
