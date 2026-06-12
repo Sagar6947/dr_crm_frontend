@@ -363,14 +363,12 @@ export default function SettingsPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setPaymentSettings(p => ({ ...p, razorpay_mode: p.razorpay_mode === 'live' ? 'test' : 'live' }))}
-                                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                                                        paymentSettings.razorpay_mode === 'live' ? 'bg-medical-teal' : 'bg-slate-300'
-                                                    }`}
+                                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${paymentSettings.razorpay_mode === 'live' ? 'bg-medical-teal' : 'bg-slate-300'
+                                                        }`}
                                                 >
                                                     <span
-                                                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm ${
-                                                            paymentSettings.razorpay_mode === 'live' ? 'translate-x-6' : 'translate-x-1'
-                                                        }`}
+                                                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm ${paymentSettings.razorpay_mode === 'live' ? 'translate-x-6' : 'translate-x-1'
+                                                            }`}
                                                     />
                                                 </button>
                                                 <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${paymentSettings.razorpay_mode === 'live' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
@@ -392,12 +390,12 @@ export default function SettingsPage() {
                                                         <input
                                                             type={showKeys.testId ? "text" : "password"}
                                                             value={paymentSettings.razorpay_test_key_id}
-                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_test_key_id: e.target.value})}
+                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_test_key_id: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
                                                         />
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => setShowKeys({...showKeys, testId: !showKeys.testId})}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowKeys({ ...showKeys, testId: !showKeys.testId })}
                                                             className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                                                         >
                                                             {showKeys.testId ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -410,12 +408,12 @@ export default function SettingsPage() {
                                                         <input
                                                             type={showKeys.testSecret ? "text" : "password"}
                                                             value={paymentSettings.razorpay_test_key_secret}
-                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_test_key_secret: e.target.value})}
+                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_test_key_secret: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
                                                         />
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => setShowKeys({...showKeys, testSecret: !showKeys.testSecret})}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowKeys({ ...showKeys, testSecret: !showKeys.testSecret })}
                                                             className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                                                         >
                                                             {showKeys.testSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -436,12 +434,12 @@ export default function SettingsPage() {
                                                         <input
                                                             type={showKeys.liveId ? "text" : "password"}
                                                             value={paymentSettings.razorpay_live_key_id}
-                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_live_key_id: e.target.value})}
+                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_live_key_id: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
                                                         />
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => setShowKeys({...showKeys, liveId: !showKeys.liveId})}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowKeys({ ...showKeys, liveId: !showKeys.liveId })}
                                                             className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                                                         >
                                                             {showKeys.liveId ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -454,12 +452,12 @@ export default function SettingsPage() {
                                                         <input
                                                             type={showKeys.liveSecret ? "text" : "password"}
                                                             value={paymentSettings.razorpay_live_key_secret}
-                                                            onChange={e => setPaymentSettings({...paymentSettings, razorpay_live_key_secret: e.target.value})}
+                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_live_key_secret: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
                                                         />
-                                                        <button 
-                                                            type="button" 
-                                                            onClick={() => setShowKeys({...showKeys, liveSecret: !showKeys.liveSecret})}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowKeys({ ...showKeys, liveSecret: !showKeys.liveSecret })}
                                                             className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
                                                         >
                                                             {showKeys.liveSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

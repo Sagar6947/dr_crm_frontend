@@ -1,0 +1,452 @@
+.invoice-wrapper {
+  --blue: #136db6;
+  --blue-dark: #0460ad;
+  --navy: #102136;
+  --slate: #355575;
+  --green: #078342;
+  --green-dark: #046a36;
+  --soft: #f7fafd;
+  --soft-2: #f3f5f7;
+  --line: #e7ebee;
+  --ink: #17283b;
+  --muted: #62748a;
+  --white: #ffffff;
+  --peach: #ffe8da;
+  
+  color: var(--ink);
+  font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: 0;
+  box-sizing: border-box;
+}
+
+.invoice-wrapper * {
+  box-sizing: border-box;
+}
+
+.invoice-wrapper .sheet {
+  position: relative;
+  width: 794px;
+  min-height: 1123px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid rgba(16, 33, 54, 0.08);
+  box-shadow: 0 24px 70px rgba(16, 33, 54, 0.16);
+}
+
+.invoice-wrapper .brand-band {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 112px;
+  padding: 28px 42px 18px;
+  color: var(--blue-dark);
+  background: var(--white);
+}
+
+.invoice-wrapper .brand-left,
+.invoice-wrapper .brand-right {
+  position: relative;
+  z-index: 1;
+}
+
+.invoice-wrapper .brand-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.invoice-wrapper .brand-logo {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+}
+
+.invoice-wrapper .brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.invoice-wrapper .brand-name {
+  margin: 0 0 5px;
+  color: var(--navy);
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.invoice-wrapper .brand-tagline {
+  margin: 0;
+  color: var(--slate);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.invoice-wrapper .invoice-title {
+  margin: 0;
+  color: var(--blue-dark);
+  font-size: 48px;
+  line-height: 0.98;
+  font-weight: 900;
+}
+
+.invoice-wrapper .content {
+  position: relative;
+  padding: 34px 42px 30px;
+}
+
+.invoice-wrapper .watermark {
+  position: absolute;
+  top: 216px;
+  right: 30px;
+  width: 305px;
+  opacity: 0.035;
+  pointer-events: none;
+}
+
+.invoice-wrapper .summary-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 455px 1fr;
+  gap: 22px;
+  margin-bottom: 24px;
+}
+
+.invoice-wrapper .panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  overflow: hidden;
+}
+
+.invoice-wrapper .panel-heading {
+  padding: 12px 16px;
+  color: var(--blue-dark);
+  background: var(--soft);
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.invoice-wrapper .panel-body {
+  padding: 15px 16px 16px;
+}
+
+.invoice-wrapper .patient-name {
+  margin: 0 0 7px;
+  color: var(--navy);
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.invoice-wrapper .small-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.invoice-wrapper .detail-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.invoice-wrapper .detail-row {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: 12px;
+  align-items: start;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.invoice-wrapper .detail-row dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.invoice-wrapper .detail-row dd {
+  margin: 0;
+  color: var(--navy);
+  font-weight: 800;
+  text-align: right;
+}
+
+.invoice-wrapper .clinic-list {
+  gap: 7px;
+}
+
+.invoice-wrapper .clinic-list .detail-row {
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.invoice-wrapper .clinic-list .detail-row dd {
+  text-align: left;
+  font-weight: 700;
+}
+
+.invoice-wrapper .bill-panel {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 24px;
+}
+
+.invoice-wrapper .bill-body {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+.invoice-wrapper .meta-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.invoice-wrapper .meta-box {
+  padding: 14px 13px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--green);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--white), var(--soft));
+}
+
+.invoice-wrapper .meta-box .label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.invoice-wrapper .meta-box .value {
+  color: var(--navy);
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.invoice-wrapper table {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--white);
+}
+
+.invoice-wrapper thead th {
+  padding: 13px 14px;
+  color: var(--white);
+  background: var(--navy);
+  border-bottom: 4px solid var(--green);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.invoice-wrapper tbody td {
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.42;
+  vertical-align: top;
+}
+
+.invoice-wrapper tbody tr:nth-child(even) td {
+  background: var(--soft);
+}
+
+.invoice-wrapper tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.invoice-wrapper .service-title {
+  display: block;
+  color: var(--navy);
+  font-weight: 800;
+}
+
+.invoice-wrapper .service-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.invoice-wrapper .right {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.invoice-wrapper .totals-area {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 26px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+.invoice-wrapper .note-box {
+  padding: 17px 18px;
+  border-left: 5px solid var(--green);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.invoice-wrapper .note-box h3,
+.invoice-wrapper .payment-card h3 {
+  margin: 0 0 9px;
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.invoice-wrapper .note-box p,
+.invoice-wrapper .payment-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.invoice-wrapper .totals-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--white);
+}
+
+.invoice-wrapper .total-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--line);
+  color: var(--slate);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.invoice-wrapper .total-line.final {
+  padding: 17px 15px;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--green), var(--green-dark));
+  border-bottom: 0;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.invoice-wrapper .payment-sign {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 27px;
+}
+
+.invoice-wrapper .payment-card {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid rgba(19, 109, 182, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(19, 109, 182, 0.08), rgba(7, 131, 66, 0.08)),
+    var(--soft);
+}
+
+.invoice-wrapper .payment-card strong {
+  color: var(--navy);
+  font-weight: 800;
+}
+
+.invoice-wrapper .footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 16px 42px;
+  color: rgba(255, 255, 255, 0.82);
+  background: var(--navy);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.invoice-wrapper .footer strong {
+  color: var(--white);
+  font-weight: 800;
+}
+
+.invoice-wrapper .footer-accent {
+  width: 78px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue), var(--green));
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  #printable-invoice, #printable-invoice * {
+    visibility: visible;
+  }
+  
+  #printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    min-height: 297mm;
+  }
+
+  .invoice-wrapper {
+    width: 210mm;
+    height: 297mm;
+    background: var(--white);
+    padding: 0;
+  }
+
+  .invoice-wrapper .sheet {
+    width: 210mm;
+    min-height: 297mm;
+    border: 0;
+    box-shadow: none;
+    margin: 0;
+  }
+}

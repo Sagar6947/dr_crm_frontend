@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
-    CalendarCheck, Plus, Search, Eye,
+    CalendarCheck, Plus, Search, Eye, FileText,
     Clock, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight, Loader2
 } from "lucide-react";
 import { appointmentService } from "@/lib/api";
@@ -236,12 +236,20 @@ export default function AppointmentsPage() {
                                                     <Eye className="w-3.5 h-3.5" /> View
                                                 </Link> */}
 
-                                                <Link
-    href={`/admin/appointments/${apt.id}`}
-    onClick={() => sessionStorage.setItem("apt_detail", JSON.stringify(apt))}
-    className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-semibold">
-    <Eye className="w-3.5 h-3.5" /> View
-</Link>
+                                                <div className="flex items-center gap-3">
+                                                    <Link
+                                                        href={`/admin/appointments/${apt.id}`}
+                                                        onClick={() => sessionStorage.setItem("apt_detail", JSON.stringify(apt))}
+                                                        className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-semibold">
+                                                        <Eye className="w-3.5 h-3.5" /> View
+                                                    </Link>
+                                                    <Link
+                                                        href={`/admin/appointments/${apt.id}/invoice`}
+                                                        onClick={() => sessionStorage.setItem("apt_detail", JSON.stringify(apt))}
+                                                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-semibold">
+                                                        <FileText className="w-3.5 h-3.5" /> Invoice
+                                                    </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
