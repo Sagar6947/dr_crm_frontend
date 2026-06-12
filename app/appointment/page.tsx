@@ -278,13 +278,16 @@ export default function AppointmentWizard() {
             <div className="container mx-auto px-6 max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-8">
                     <div>
-                        <Link href="/" className="flex items-center gap-2 mb-4 group">
-                            <div className="w-8 h-8 bg-medical-teal rounded-lg flex items-center justify-center shadow-lg shadow-teal-100 group-hover:scale-105 transition-transform">
-                                <HeartPulse className="text-white w-5 h-5" />
+                        <Link href="/" className="flex items-center gap-3 mb-4 group">
+                            <img src="/dr-mahesh-clinic-logo.png" alt="Logo" className="w-8 h-8 object-contain group-hover:scale-105 transition-transform" />
+                            <div className="flex flex-col justify-center">
+                                <span className="text-lg font-black text-slate-900 tracking-tight leading-none uppercase">
+                                    Elixa
+                                </span>
+                                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                                    Homeopathic Healing Hands<br/>and House of Hopes
+                                </span>
                             </div>
-                            <span className="text-lg font-bold tracking-tight text-slate-800 uppercase">
-                                Dr. <span className="text-medical-teal">CRM</span>
-                            </span>
                         </Link>
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
                             {formData.patientType === "existing" && isOtpVerified ? "Patient Portal" : "Booking Portal"}
@@ -1714,6 +1717,14 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
             <div className="max-w-2xl w-full bg-white border border-slate-100 rounded-[48px] p-12 shadow-2xl relative overflow-hidden print:hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-50 rounded-full translate-x-20 -translate-y-20 -z-1" />
 
+                <div className="flex items-center justify-between bg-white border border-slate-100 rounded-3xl p-4 shadow-sm mb-12 relative z-10">
+                    <img src="/dr-mahesh-clinic-logo.png" alt="Clinic Logo" className="h-12 w-auto object-contain" />
+                    <div className="bg-teal-50/50 border border-teal-100 rounded-2xl px-5 py-2 text-right">
+                        <p className="text-[9px] font-bold text-teal-600 uppercase tracking-widest mb-0.5">Booking Amount</p>
+                        <p className="text-base font-bold text-slate-900">₹500 Paid</p>
+                    </div>
+                </div>
+
                 <div className="text-center space-y-6 mb-12 relative z-10">
                     <div className="w-24 h-24 bg-teal-50 text-medical-teal rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-teal-100 rotate-12">
                         <CheckCircle2 className="w-12 h-12 -rotate-12" />
@@ -1748,7 +1759,19 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </div>
                 </div>
 
-                <div className="flex gap-4 print:hidden">
+                <div className="p-8 bg-[#f4fbfa] border border-teal-100 rounded-[32px] mb-10 text-left relative z-10">
+                    <h5 className="font-bold text-[#0f8558] text-base mb-4">Disclaimer:</h5>
+                    <ol className="list-decimal list-outside ml-4 space-y-3 text-xs text-slate-600 font-medium">
+                        <li>
+                            Booking amount is non-refundable. However, if you are unable to attend your confirmed appointment, you can reschedule within 7 days without paying again.
+                        </li>
+                        <li>
+                            The booking amount is for confirmation of your desired time slot. It does not include consultation or medicine charges. However, the booking amount will be adjusted in the final amount.
+                        </li>
+                    </ol>
+                </div>
+
+                <div className="flex gap-4 print:hidden relative z-10">
                     <Link href="/" className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
                         Go to Portal
                     </Link>
@@ -1760,8 +1783,9 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
 
             <div id="print-section" className="hidden">
                 <div className="text-center border-b-2 border-teal-600 pb-6 mb-6">
-                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Dr Mahesh Chandra Kandpal</h1>
-                    <p className="text-sm text-slate-500">Premium Healthcare & Consultations</p>
+                    <img src="/dr-mahesh-clinic-logo.png" alt="Elixa Logo" className="h-16 w-auto mx-auto mb-4" />
+                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Elixa</h1>
+                    <p className="text-sm text-slate-500 uppercase tracking-widest font-bold">Homeopathic Healing Hands and House of Hopes</p>
                 </div>
                 <div className="flex justify-between items-center mb-8">
                     <div>
@@ -1792,7 +1816,7 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </div>
                 </div>
                 <div className="border-t-2 border-dashed border-slate-200 pt-6 text-center">
-                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Dr Mahesh Chandra Kandpal</p>
+                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Elixa</p>
                     <p className="text-xs text-slate-500">Please arrive 15 minutes early for in-person visits.</p>
                 </div>
             </div>
@@ -1884,8 +1908,9 @@ const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClos
 
             <div id="print-section-updated" className="hidden">
                 <div className="text-center border-b-2 border-teal-600 pb-6 mb-6">
-                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Dr Mahesh Chandra Kandpal</h1>
-                    <p className="text-sm text-slate-500">Premium Healthcare & Consultations</p>
+                    <img src="/dr-mahesh-clinic-logo.png" alt="Elixa Logo" className="h-16 w-auto mx-auto mb-4" />
+                    <h1 className="text-3xl font-black text-teal-800 uppercase tracking-widest mb-2">Elixa</h1>
+                    <p className="text-sm text-slate-500 uppercase tracking-widest font-bold">Homeopathic Healing Hands and House of Hopes</p>
                 </div>
                 <div className="flex justify-between items-center mb-8">
                     <div>
@@ -1916,7 +1941,7 @@ const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClos
                     </div>
                 </div>
                 <div className="border-t-2 border-dashed border-slate-200 pt-6 text-center">
-                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Dr Mahesh Chandra Kandpal</p>
+                    <p className="text-sm font-bold text-slate-800 mb-1">Thank you for choosing Elixa</p>
                     <p className="text-xs text-slate-500">Please arrive 15 minutes early for in-person visits.</p>
                 </div>
             </div>

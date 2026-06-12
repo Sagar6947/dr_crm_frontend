@@ -23,13 +23,16 @@ const Header = () => {
         >
             <div className="container mx-auto px-6 flex items-center justify-between">
                 {/* BRAND */}
-                <Link href="/" className="flex items-center gap-2 group">
-                    <div className="w-10 h-10 bg-medical-teal rounded-xl flex items-center justify-center shadow-lg shadow-teal-100 group-hover:scale-105 transition-transform">
-                        <HeartPulse className="text-white w-6 h-6" />
+                <Link href="/" className="flex items-center gap-3 group">
+                    <img src="/dr-mahesh-clinic-logo.png" alt="Elixa Logo" className="w-10 h-10 object-contain group-hover:scale-105 transition-transform" />
+                    <div className="flex flex-col justify-center">
+                        <span className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">
+                            Elixa
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+                            Homeopathic Healing Hands and House of Hopes
+                        </span>
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-slate-900 uppercase">
-                        Dr. <span className="text-medical-teal">CRM</span>
-                    </span>
                 </Link>
 
                 {/* NAVIGATION - DESKTOP */}

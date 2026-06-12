@@ -75,15 +75,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="flex flex-col h-full p-4">
                     {/* Logo Section */}
                     <div className="flex items-center gap-3 px-2 mb-10 mt-2">
-                        <div className="w-10 h-10 bg-medical-teal rounded-xl flex items-center justify-center shadow-lg shadow-teal-100 overflow-hidden shrink-0">
-                            <HeartPulse className="text-white w-6 h-6" />
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
+                            <img src="/dr-mahesh-clinic-logo.png" alt="Logo" className="w-8 h-8 object-contain" />
                         </div>
                         {isSidebarOpen && (
                             <div className="overflow-hidden">
-                                <span className="text-lg font-bold tracking-tight text-slate-800 uppercase block whitespace-nowrap">
-                                    Dr. <span className="text-medical-teal">CRM</span>
+                                <span className="text-xl font-black text-slate-900 tracking-tight leading-none block whitespace-nowrap uppercase">
+                                    Elixa
                                 </span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block whitespace-nowrap">Portal v1.0</span>
+                                <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest block whitespace-normal mt-1 leading-tight">
+                                    Homeopathic Healing Hands<br/>and House of Hopes
+                                </span>
                             </div>
                         )}
                     </div>

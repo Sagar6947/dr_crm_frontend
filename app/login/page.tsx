@@ -241,11 +241,14 @@ export default function LoginPage() {
 
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center">
-            <HeartPulse className="text-white w-5 h-5" />
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center">
+            <img src="/dr-mahesh-clinic-logo.png" alt="Logo" className="w-10 h-10 object-contain" />
           </div>
-          <span className="text-xl font-bold text-slate-900">Dr. CRM</span>
+          <div className="flex flex-col justify-center text-left">
+            <span className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">Elixa</span>
+            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">Homeopathic Healing Handsand House of Hopes</span>
+          </div>
         </div>
 
         <h1 className="text-xl font-bold text-slate-900 text-center mb-1">
