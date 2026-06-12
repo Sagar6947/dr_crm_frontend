@@ -9,16 +9,36 @@ import "./invoice.css";
 export default function InvoiceBuilderPage() {
     const [apt, setApt] = useState<any>(null);
     const [items, setItems] = useState<any[]>([
-        { id: 1, title: "Consultation", note: "Complete homeopathic consultation", qty: 1, rate: 500 }
+        { id: 1, title: "Booking Amount", note: "Appointment booking fee", qty: 1, rate: 500 }
     ]);
     const [newItem, setNewItem] = useState({ title: "", note: "", qty: 1, rate: 0 });
     const [discount, setDiscount] = useState<number>(0);
     const [tax, setTax] = useState<number>(0);
+    const [paymentMode, setPaymentMode] = useState<string>("UPI");
+    const [paymentDetails, setPaymentDetails] = useState<string>("");
 
     useEffect(() => {
         const stored = sessionStorage.getItem("apt_detail");
         if (stored) {
-            setApt(JSON.parse(stored));
+            const parsedApt = JSON.parse(stored);
+            setApt(parsedApt);
+            
+            const amt = parsedApt.payment?.amount || parsedApt.amount;
+            if (amt) {
+                setItems([{ id: 1, title: "Booking Amount", note: "Appointment booking fee", qty: 1, rate: parseInt(amt) || 0 }]);
+            }
+
+            const pMode = parsedApt.payment?.mode || parsedApt.payment_mode || "";
+            if (pMode) {
+                const lower = pMode.toLowerCase();
+                if (lower.includes('cash')) setPaymentMode('Cash');
+                else if (lower.includes('upi')) setPaymentMode('UPI');
+                else if (lower.includes('bank')) setPaymentMode('Bank Transfer');
+                else {
+                    setPaymentMode('Other');
+                    setPaymentDetails(pMode);
+                }
+            }
         }
     }, []);
 
@@ -97,7 +117,7 @@ export default function InvoiceBuilderPage() {
                         </button>
                     </div>
 
-                    <h2 className="text-lg font-bold text-slate-900 mb-4 border-b pb-2">Adjustments</h2>
+                    <h2 className="text-lg font-bold text-slate-900 mb-4 border-b pb-2">Adjustments & Payment</h2>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <div>
                             <label className="block text-xs font-semibold text-slate-500 mb-1">Discount (₹)</label>
@@ -107,6 +127,23 @@ export default function InvoiceBuilderPage() {
                             <label className="block text-xs font-semibold text-slate-500 mb-1">Tax (₹)</label>
                             <input type="number" min="0" value={tax} onChange={e => setTax(parseInt(e.target.value) || 0)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
                         </div>
+                        <div className="col-span-2">
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Payment Mode</label>
+                            <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        {paymentMode !== "Cash" && (
+                            <div className="col-span-2">
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">
+                                    {paymentMode === "Other" ? "Specify Mode & Details" : "Transaction ID / Details"}
+                                </label>
+                                <input type="text" value={paymentDetails} onChange={e => setPaymentDetails(e.target.value)} placeholder={paymentMode === "Other" ? "e.g., Credit Card - XXXX" : "e.g., TXN12345678"} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                            </div>
+                        )}
                     </div>
 
                     <h2 className="text-sm font-bold text-slate-900 mb-3 border-b pb-2">Current Items</h2>
@@ -199,10 +236,6 @@ export default function InvoiceBuilderPage() {
                                                     <dt>Visit Type</dt>
                                                     <dd className="capitalize">{apt.consultation_mode || "Clinic Consultation"}</dd>
                                                 </div>
-                                                <div className="detail-row">
-                                                    <dt>Consultant</dt>
-                                                    <dd>{(apt.doctor?.full_name || apt.doctor?.name)?.split(' ')[0] || "Dr. Mahesh"}</dd>
-                                                </div>
                                             </dl>
                                         </div>
                                     </div>
@@ -228,7 +261,7 @@ export default function InvoiceBuilderPage() {
                                     </div>
                                     <div className="meta-box">
                                         <span className="label">Payment Mode</span>
-                                        <span className="value capitalize">{apt.payment?.mode || apt.payment_mode || "Cash / UPI"}</span>
+                                        <span className="value capitalize">{paymentMode === "Other" ? (paymentDetails || "Other") : paymentMode}</span>
                                     </div>
                                     <div className="meta-box">
                                         <span className="label">Appointment Date</span>
@@ -300,7 +333,7 @@ export default function InvoiceBuilderPage() {
                                         <h3>Payment Details</h3>
                                         <p>
                                             <strong>Received By:</strong> {apt.clinic?.name || "Dr. Mahesh Chandra Clinic"}<br/>
-                                            <strong>UPI / Bank:</strong> ______________________________<br/>
+                                            <strong>Payment Info:</strong> {paymentMode === "Cash" ? "Cash" : `${paymentMode} ${paymentDetails ? `- ${paymentDetails}` : ""}`}<br/>
                                             <strong>Clinic Address:</strong> {[apt.clinic?.address, apt.clinic?.city, apt.clinic?.state].filter(Boolean).join(", ") || "Ground Floor, H5-12, Dr. KN Katju Marg, Pocket 3, Sector 11, Rohini, Delhi, 110085, India"}
                                         </p>
                                     </div>
