@@ -31,6 +31,20 @@ import { clinicService, geoService, appointmentService, patientService, doctorSe
 // --- MOCK DATA ---
 const TIME_SLOTS = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
 
+const BookingDisclaimer = () => (
+    <div className="p-5 bg-[#f4fbfa] border border-teal-100 rounded-2xl mb-6 text-left relative z-10 w-full mt-6 print:hidden">
+        <h5 className="font-bold text-[#0f8558] text-sm mb-2">Disclaimer:</h5>
+        <ol className="list-decimal list-outside ml-4 space-y-2 text-[11px] text-slate-600 font-medium leading-snug">
+            <li>
+                Booking amount is non-refundable. However, if you are unable to attend your confirmed appointment, you can reschedule within 7 days without paying again.
+            </li>
+            <li>
+                The booking amount is for confirmation of your desired time slot. It does not include consultation or medicine charges. However, the booking amount will be adjusted in the final amount.
+            </li>
+        </ol>
+    </div>
+);
+
 // --- TYPES ---
 type FormData = {
     patientType: "new" | "existing";
@@ -403,6 +417,7 @@ export default function AppointmentWizard() {
                         </div>
                     </form>
                 </div>
+                <BookingDisclaimer />
             </div>
         </div>
     );
@@ -494,7 +509,7 @@ const Step0 = ({ formData, updateFields, generatePatientId }: StepProps) => (
                     <User className="w-6 h-6" />
                 </div>
                 <div className="text-center">
-                    <h4 className="font-bold text-slate-900 mb-1">New Patient</h4>
+                    <h4 className="font-bold text-slate-900 mb-1">Book An Appointment</h4>
                     <p className="text-xs text-slate-500 px-4">I am visiting Lumina Health for the first time.</p>
                 </div>
             </button>
@@ -507,7 +522,7 @@ const Step0 = ({ formData, updateFields, generatePatientId }: StepProps) => (
                     <Search className="w-6 h-6" />
                 </div>
                 <div className="text-center">
-                    <h4 className="font-bold text-slate-900 mb-1">Existing Patient</h4>
+                    <h4 className="font-bold text-slate-900 mb-1">Cancel / Reschedule</h4>
                     <p className="text-xs text-slate-500 px-4">I have a Patient ID or previously registered phone number.</p>
                 </div>
             </button>
@@ -1794,17 +1809,7 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                     </div>
                 </div>
 
-                <div className="p-5 bg-[#f4fbfa] border border-teal-100 rounded-2xl mb-6 text-left relative z-10">
-                    <h5 className="font-bold text-[#0f8558] text-sm mb-2">Disclaimer:</h5>
-                    <ol className="list-decimal list-outside ml-4 space-y-2 text-[11px] text-slate-600 font-medium leading-snug">
-                        <li>
-                            Booking amount is non-refundable. However, if you are unable to attend your confirmed appointment, you can reschedule within 7 days without paying again.
-                        </li>
-                        <li>
-                            The booking amount is for confirmation of your desired time slot. It does not include consultation or medicine charges. However, the booking amount will be adjusted in the final amount.
-                        </li>
-                    </ol>
-                </div>
+                <BookingDisclaimer />
 
                 <div className="flex gap-3 print:hidden relative z-10">
                     <Link href="/" className="btn-primary w-full justify-center !py-3 !rounded-2xl shadow-xl shadow-teal-600/10 text-sm">
@@ -1930,6 +1935,8 @@ const UpdatedSuccessCard = ({ appointment, onClose }: { appointment: any; onClos
                         <p className="text-xs text-medical-teal/70 leading-relaxed font-medium">Updated notification alerts sent to your registered channels. You can modify this appointment again anytime within <span className="font-bold">30 days</span>.</p>
                     </div>
                 </div>
+
+                <BookingDisclaimer />
 
                 <div className="flex gap-4 print:hidden">
                     <button onClick={onClose} className="btn-primary w-full justify-center !py-5 !rounded-3xl shadow-xl shadow-teal-600/10">
