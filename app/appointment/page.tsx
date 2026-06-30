@@ -273,7 +273,7 @@ export default function AppointmentWizard() {
     return (
         <div className="min-h-screen bg-medical-slate-bg py-12 md:py-20 font-sans">
             <Script src="https://checkout.razorpay.com/v1/checkout.js" />
-            
+
             {customAlert && (
                 <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className="bg-white border-l-4 border-red-500 shadow-xl rounded-xl p-4 flex items-start gap-3 max-w-md">
@@ -299,7 +299,7 @@ export default function AppointmentWizard() {
                                     Elixa
                                 </span>
                                 <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                                    Homeopathic Healing Hands<br/>and House of Hopes
+                                    Homeopathic Healing Hands<br />and House of Hopes
                                 </span>
                             </div>
                         </Link>
@@ -378,7 +378,7 @@ export default function AppointmentWizard() {
                                         onClick={back}
                                         className="btn-secondary gap-2 px-8"
                                     >
-                                        <ChevronLeft className="w-4 h-4" /> Back to Step 0
+                                        <ChevronLeft className="w-4 h-4" /> Back to Step
                                     </button>
                                     {isOtpVerified && (
                                         <button
@@ -569,6 +569,7 @@ const Step1 = ({
     const [phoneError, setPhoneError] = useState("");
     const [localOtpError, setLocalOtpError] = useState("");
     const [loadingAppointments, setLoadingAppointments] = useState(false);
+    const [isSendingOtp, setIsSendingOtp] = useState(false);
 
     const handlePhone = (val: string) => {
         const digits = val.replace(/\D/g, "").slice(0, 10);
@@ -591,12 +592,15 @@ const Step1 = ({
             return;
         }
         setPhoneError("");
+        setIsSendingOtp(true);
         try {
             await patientService.sendOtp(existingPhone);
             setOtpSent(true);
             setOtpError("");
         } catch (error) {
             setPhoneError("Failed to send OTP. Please try again.");
+        } finally {
+            setIsSendingOtp(false);
         }
     };
 
@@ -666,15 +670,15 @@ const Step1 = ({
 
     useEffect(() => {
         if (!reschedulingAppointmentId || !rescheduleDate) return;
-        
+
         const appt = appointments.find(a => a.id === reschedulingAppointmentId);
         if (!appt || !appt.doctorId || !appt.clinicId) return;
 
         setLoadingRescheduleSlots(true);
         doctorService.getSlots(appt.doctorId, appt.clinicId, rescheduleDate)
             .then((res: any) => {
-                const availableSlots = (res.data || []).filter((s: any) => 
-                    s.status === 'available' && 
+                const availableSlots = (res.data || []).filter((s: any) =>
+                    s.status === 'available' &&
                     s.slot_date === rescheduleDate &&
                     (!s.consultation_mode || s.consultation_mode === 'all' || !appt.mode || s.consultation_mode === appt.mode)
                 );
@@ -788,9 +792,16 @@ const Step1 = ({
                                     <button
                                         type="button"
                                         onClick={handleSendOtp}
-                                        className="btn-primary w-full justify-center !py-4 shadow-lg shadow-teal-100"
+                                        disabled={isSendingOtp}
+                                        className="btn-primary w-full justify-center !py-4 shadow-lg shadow-teal-100 disabled:opacity-70 disabled:cursor-not-allowed"
                                     >
-                                        Send Verification OTP
+                                        {isSendingOtp ? (
+                                            <span className="flex items-center gap-2">
+                                                <Loader2 className="w-5 h-5 animate-spin" /> Sending...
+                                            </span>
+                                        ) : (
+                                            "Send Verification OTP"
+                                        )}
                                     </button>
                                 </div>
                             ) : (
@@ -900,8 +911,8 @@ const Step1 = ({
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-bold text-slate-800">{appt.id}</span>
                                                     <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${appt.status === "Scheduled" ? "bg-teal-50 text-medical-teal border-teal-100" :
-                                                            appt.status === "Completed" ? "bg-green-50 text-green-600 border-green-100" :
-                                                                "bg-red-50 text-red-500 border-red-100"
+                                                        appt.status === "Completed" ? "bg-green-50 text-green-600 border-green-100" :
+                                                            "bg-red-50 text-red-500 border-red-100"
                                                         }`}>
                                                         {appt.status}
                                                     </span>
@@ -1482,7 +1493,7 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => {
                 const availableSlots = (res.data || []).filter((s: any) => {
                     const isAvailable = s.status === 'available' && s.slot_date === formData.date;
                     const modeMatches = (!s.consultation_mode || s.consultation_mode === 'all' || s.consultation_mode === formData.consultationMode);
-                    
+
                     if (!isAvailable || !modeMatches) return false;
 
                     if (isToday && s.slot_time) {
@@ -1494,7 +1505,7 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => {
                             if (ampm === 'PM' && hours < 12) hours += 12;
                             if (ampm === 'AM' && hours === 12) hours = 0;
                             const slotMinutes = hours * 60 + minutes;
-                            
+
                             // Filter out past slots
                             if (slotMinutes <= currentMinutes) {
                                 return false;
@@ -1787,11 +1798,11 @@ const SuccessCard = ({ formData }: { formData: FormData }) => {
                         <CheckCircle2 className="w-8 h-8 -rotate-12" />
                     </div>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Registration Complete</h2>
-                     <p className="text-sm text-slate-500 max-w-sm mx-auto leading-tight">Thank you for booking your appointment. Your appointment has been booked successfully.</p>
+                    <p className="text-sm text-slate-500 max-w-sm mx-auto leading-tight">Thank you for booking your appointment. Your appointment has been booked successfully.</p>
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full border border-green-100 text-[9px] font-bold uppercase tracking-widest">
                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Active Appointment Status
                     </div>
-                   
+
                 </div>
 
                 <div className="bg-slate-50/50 rounded-3xl border border-slate-100 p-5 space-y-6 mb-6">
