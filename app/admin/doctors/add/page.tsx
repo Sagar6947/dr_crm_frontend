@@ -340,12 +340,22 @@ function AddDoctorForm() {
                                 </div>
 
                                 <div>
-                                    <label className={labelClass}>Phone <span className="text-rose-500">*</span></label>
+                                    <label className={labelClass}>
+                                        WhatsApp Phone <span className="text-rose-500">*</span>
+                                        <span className="block text-[9px] text-slate-400 normal-case tracking-normal mt-0.5">Please use WhatsApp number (10 digits without spaces)</span>
+                                    </label>
                                     <input
                                         ref={(el) => { fieldRefs.current["phone"] = el; }}
                                         type="tel" placeholder="9876543210"
+                                        maxLength={10}
+                                        pattern="\d{10}"
                                         className={inputClass("phone")}
-                                        value={formData.phone} onChange={(e) => set("phone", e.target.value)} disabled={isSubmitting}
+                                        value={formData.phone} 
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                            set("phone", val);
+                                        }} 
+                                        disabled={isSubmitting}
                                     />
                                     {errors.phone && <p className="text-rose-500 text-[10px] font-bold mt-1 uppercase">{errors.phone}</p>}
                                 </div>

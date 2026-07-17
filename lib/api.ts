@@ -220,9 +220,10 @@ export const doctorService = {
         method: 'DELETE',
         signal
     }),
-    getSlots: (doctorId: string, clinicId: string, date?: string, signal?: AbortSignal) => {
+    getSlots: (doctorId: string, clinicId: string, date?: string, isRecurring?: boolean | string, signal?: AbortSignal) => {
         let url = `/doctor/getDoctorSlots?doctor_id=${doctorId}&clinic_id=${clinicId}`;
         if (date) url += `&date=${date}`;
+        if (isRecurring !== undefined) url += `&is_recurring=${isRecurring ? '1' : '0'}`;
         return request(url, { signal });
     },
     addSlot: (formData: any, signal?: AbortSignal) => {
@@ -248,6 +249,20 @@ export const doctorService = {
             body,
             signal
         });
+    },
+    toggleLeave: (formData: any, signal?: AbortSignal) => {
+        const body = new URLSearchParams(formData).toString();
+        return request('/doctor/toggleDoctorLeave', {
+            method: 'POST',
+            body,
+            signal
+        });
+    },
+    getLeaves: (doctorId: string, clinicId?: string, monthYear?: string, signal?: AbortSignal) => {
+        let url = `/doctor/getDoctorLeaves?doctor_id=${doctorId}`;
+        if (clinicId) url += `&clinic_id=${clinicId}`;
+        if (monthYear) url += `&month_year=${monthYear}`;
+        return request(url, { signal });
     },
 };
 

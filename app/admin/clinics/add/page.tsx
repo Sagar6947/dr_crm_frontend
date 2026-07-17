@@ -220,6 +220,14 @@ function AddClinicForm() {
         setIsSubmitting(true);
         setErrors({});
 
+        if (!formData.map_link.trim()) {
+            setErrors({ map_link: "Google Map Link is required" });
+            toast.error("Please provide the Google Map Location (Link) for the clinic.");
+            scrollToError({ map_link: true });
+            setIsSubmitting(false);
+            return;
+        }
+
         try {
             const submitData = new FormData();
             Object.entries(formData).forEach(([key, value]) => {
@@ -250,6 +258,7 @@ function AddClinicForm() {
                 if (error.message.includes("Name")) scrollToError({ name: true });
                 else if (error.message.includes("Phone")) scrollToError({ primary_phone: true });
                 else if (error.message.includes("Email")) scrollToError({ email: true });
+                else if (error.message.includes("Map")) scrollToError({ map_link: true });
             } else {
                 toast.error("An unexpected error occurred. Please try again.");
             }
@@ -492,16 +501,21 @@ function AddClinicForm() {
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Google Map Location (Link)</label>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Google Map Location (Link) <span className="text-rose-500">*</span></label>
                                 <input
                                     ref={(el) => { fieldRefs.current["map_link"] = el; }}
                                     type="text"
                                     placeholder="https://maps.google.com/..."
-                                    className="w-full bg-slate-50 border-slate-100 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium"
+                                    className={`w-full bg-slate-50 border p-4 rounded-2xl focus:ring-2 focus:ring-medical-teal outline-none transition-all text-sm font-medium ${errors.map_link ? 'border-rose-400 ring-1 ring-rose-400' : 'border-slate-100'}`}
                                     value={formData.map_link}
-                                    onChange={(e) => setFormData({ ...formData, map_link: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, map_link: e.target.value });
+                                        if (errors.map_link) setErrors(prev => ({ ...prev, map_link: "" }));
+                                    }}
                                     disabled={isSubmitting}
+                                    required
                                 />
+                                {errors.map_link && <p className="text-rose-500 text-[10px] font-bold mt-1 uppercase">{errors.map_link}</p>}
                             </div>
                         </div>
                     </div>
