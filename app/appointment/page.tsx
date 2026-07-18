@@ -97,7 +97,6 @@ const INITIAL_DATA: FormData = {
 };
 
 export default function AppointmentWizard() {
-    const generatePatientId = () => `CRM-2025-${Math.floor(1000 + Math.random() * 9000)}`;
     const generateAppointmentId = () => `APT-8877-${Math.floor(1000 + Math.random() * 9000)}`;
     const [currentStep, setCurrentStep] = useState(0);
     const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
@@ -122,18 +121,12 @@ export default function AppointmentWizard() {
     const [rescheduleSlotId, setRescheduleSlotId] = useState("");
     const [rescheduleSlots, setRescheduleSlots] = useState<any[]>([]);
     const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
+    const [rescheduleIsOnLeave, setRescheduleIsOnLeave] = useState(false);
     const [rescheduledSlipAppointment, setRescheduledSlipAppointment] = useState<any>(null);
     const [cancellationConfirmId, setCancellationConfirmId] = useState<string | null>(null);
-    const [existingPatientName, setExistingPatientName] = useState("Gourav Jain");
+    const [existingPatientName, setExistingPatientName] = useState("Patient");
     const [appointments, setAppointments] = useState<any[]>([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
-
-
-    useEffect(() => {
-        if (formData.patientType === "new" && !formData.patientId) {
-            updateFields({ patientId: generatePatientId() });
-        }
-    }, [formData.patientType, formData.patientId]);
 
     const updateFields = (fields: Partial<FormData>) => {
         setFormData((prev) => ({ ...prev, ...fields }));
@@ -217,6 +210,9 @@ export default function AppointmentWizard() {
 
             appointmentService.book(payload)
                 .then((res: any) => {
+                    if (res.data && res.data.patient_code) {
+                        updateFields({ patientId: res.data.patient_code });
+                    }
                     if (formData.paymentMethod === "razorpay" && res.data && res.data.razorpay_order_id) {
                         const options = {
                             key: res.data.key_id,
@@ -322,7 +318,7 @@ export default function AppointmentWizard() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-10">
-                        {currentStep === 0 && <Step0 formData={formData} updateFields={updateFields} generatePatientId={generatePatientId} />}
+                        {currentStep === 0 && <Step0 formData={formData} updateFields={updateFields} />}
                         {currentStep === 1 && (
                             <Step1
                                 formData={formData}
@@ -351,6 +347,8 @@ export default function AppointmentWizard() {
                                 setRescheduleSlots={setRescheduleSlots}
                                 loadingRescheduleSlots={loadingRescheduleSlots}
                                 setLoadingRescheduleSlots={setLoadingRescheduleSlots}
+                                rescheduleIsOnLeave={rescheduleIsOnLeave}
+                                setRescheduleIsOnLeave={setRescheduleIsOnLeave}
                                 setRescheduledSlipAppointment={setRescheduledSlipAppointment}
                                 cancellationConfirmId={cancellationConfirmId}
                                 setCancellationConfirmId={setCancellationConfirmId}
@@ -456,7 +454,6 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
 interface StepProps {
     formData: FormData;
     updateFields: (fields: Partial<FormData>) => void;
-    generatePatientId?: () => string;
 
     // Existing patient states
     existingPhone?: string;
@@ -483,6 +480,8 @@ interface StepProps {
     setRescheduleSlots?: (slots: any[]) => void;
     loadingRescheduleSlots?: boolean;
     setLoadingRescheduleSlots?: (loading: boolean) => void;
+    rescheduleIsOnLeave?: boolean;
+    setRescheduleIsOnLeave?: (onLeave: boolean) => void;
     setRescheduledSlipAppointment?: (appt: any) => void;
     cancellationConfirmId?: string | null;
     setCancellationConfirmId?: (id: string | null) => void;
@@ -493,7 +492,7 @@ interface StepProps {
 }
 
 // --- STEP 0: Patient Discovery ---
-const Step0 = ({ formData, updateFields, generatePatientId }: StepProps) => (
+const Step0 = ({ formData, updateFields }: StepProps) => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold text-slate-900">Step 0: Patient Discovery</h2>
@@ -502,7 +501,7 @@ const Step0 = ({ formData, updateFields, generatePatientId }: StepProps) => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <button
                 type="button"
-                onClick={() => updateFields({ patientType: "new", patientId: formData.patientId || (generatePatientId ? generatePatientId() : "") })}
+                onClick={() => updateFields({ patientType: "new" })}
                 className={`p-8 rounded-[32px] border-2 transition-all flex flex-col items-center gap-4 ${formData.patientType === "new" ? "border-medical-teal bg-teal-50/50 shadow-inner" : "border-slate-100 hover:border-teal-200"}`}
             >
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${formData.patientType === "new" ? "bg-medical-teal text-white" : "bg-slate-100 text-slate-400"}`}>
@@ -558,6 +557,8 @@ const Step1 = ({
     setRescheduleSlots = () => { },
     loadingRescheduleSlots = false,
     setLoadingRescheduleSlots = () => { },
+    rescheduleIsOnLeave = false,
+    setRescheduleIsOnLeave = () => { },
     setRescheduledSlipAppointment = () => { },
     cancellationConfirmId = null,
     setCancellationConfirmId = () => { },
@@ -609,6 +610,12 @@ const Step1 = ({
             setLoadingAppointments(true);
             const res = await appointmentService.getByPhone(phone);
             setAppointments(res.data || []);
+            if (res.patient?.patientCode) {
+                updateFields({ patientId: res.patient.patientCode });
+            }
+            if (res.patient?.patientName) {
+                setExistingPatientName(res.patient.patientName);
+            }
         } catch (error) {
             console.error("Failed to fetch appointments", error);
         } finally {
@@ -628,6 +635,9 @@ const Step1 = ({
             updateFields({ phone: existingPhone });
             if (res.data?.patientName) {
                 setExistingPatientName(res.data.patientName);
+            }
+            if (res.data?.patientCode) {
+                updateFields({ patientId: res.data.patientCode });
             }
 
             // Fetch appointments
@@ -677,6 +687,12 @@ const Step1 = ({
         setLoadingRescheduleSlots(true);
         doctorService.getSlots(appt.doctorId, appt.clinicId, rescheduleDate)
             .then((res: any) => {
+                const onLeave = Boolean(res?.is_on_leave);
+                setRescheduleIsOnLeave(onLeave);
+                if (onLeave) {
+                    setRescheduleSlots([]);
+                    return;
+                }
                 const availableSlots = (res.data || []).filter((s: any) =>
                     s.status === 'available' &&
                     s.slot_date === rescheduleDate &&
@@ -686,6 +702,7 @@ const Step1 = ({
             })
             .catch((err: any) => {
                 console.error("Failed to fetch slots for reschedule", err);
+                setRescheduleIsOnLeave(false);
                 setRescheduleSlots([]);
             })
             .finally(() => setLoadingRescheduleSlots(false));
@@ -733,8 +750,8 @@ const Step1 = ({
                 <div className="space-y-8">
                     <div className="p-6 bg-teal-50 rounded-[28px] border border-teal-100 flex items-center justify-between">
                         <div>
-                            <p className="text-[10px] font-bold text-medical-teal tracking-widest uppercase mb-1">Generated ID</p>
-                            <p className="text-2xl font-bold text-medical-teal-dark tracking-tighter">{formData.patientId}</p>
+                            <p className="text-[10px] font-bold text-medical-teal tracking-widest uppercase mb-1">Patient ID</p>
+                            <p className="text-2xl font-bold text-medical-teal-dark tracking-tighter">{formData.patientId || "Assigned upon booking"}</p>
                         </div>
                         <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-medical-teal shadow-sm"><Check className="w-6 h-6" /></div>
                     </div>
@@ -863,7 +880,7 @@ const Step1 = ({
                                     <div>
                                         <h3 className="font-bold text-slate-800 text-lg leading-snug">Welcome Back, {existingPatientName}</h3>
                                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                                            <span className="text-[10px] font-bold text-medical-teal bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">Patient ID: CRM-2025-7138</span>
+                                            <span className="text-[10px] font-bold text-medical-teal bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">Patient ID: {formData.patientId || "Assigned"}</span>
                                             <span className="text-[10px] font-bold text-slate-400">Phone: +91 {existingPhone}</span>
                                         </div>
                                     </div>
@@ -974,6 +991,11 @@ const Step1 = ({
                                                                     {loadingRescheduleSlots ? (
                                                                         <div className="text-xs text-slate-400 p-2 flex items-center gap-2">
                                                                             <Loader2 className="w-3 h-3 animate-spin" /> Loading...
+                                                                        </div>
+                                                                    ) : rescheduleIsOnLeave ? (
+                                                                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-center gap-2">
+                                                                            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                                                                            Doctor is on leave on this date.
                                                                         </div>
                                                                     ) : rescheduleSlots.length === 0 ? (
                                                                         <div className="text-xs text-slate-400 p-2 border border-dashed rounded-lg">
@@ -1474,15 +1496,24 @@ const Step3LocationClinicDoctor = ({ formData, updateFields }: StepProps) => {
 const Step4Schedule = ({ formData, updateFields }: StepProps) => {
     const [slots, setSlots] = useState<any[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
+    const [isOnLeave, setIsOnLeave] = useState(false);
 
     useEffect(() => {
         if (!formData.doctorId || !formData.clinicId || !formData.date) {
             setSlots([]);
+            setIsOnLeave(false);
             return;
         }
         setLoadingSlots(true);
         doctorService.getSlots(formData.doctorId, formData.clinicId, formData.date)
             .then((res: any) => {
+                const onLeave = Boolean(res?.is_on_leave);
+                setIsOnLeave(onLeave);
+                if (onLeave) {
+                    setSlots([]);
+                    return;
+                }
+
                 // Get local today's date in YYYY-MM-DD
                 const now = new Date();
                 const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -1535,6 +1566,7 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => {
             })
             .catch((err: any) => {
                 console.error("Failed to fetch slots", err);
+                setIsOnLeave(false);
                 setSlots([]);
             })
             .finally(() => setLoadingSlots(false));
@@ -1573,6 +1605,16 @@ const Step4Schedule = ({ formData, updateFields }: StepProps) => {
                     ) : loadingSlots ? (
                         <div className="flex items-center gap-2 p-4 bg-slate-50 rounded-xl text-slate-400 text-sm">
                             <Loader2 className="w-4 h-4 animate-spin" /> Loading slots...
+                        </div>
+                    ) : isOnLeave ? (
+                        <div className="p-6 bg-rose-50 border-2 border-rose-200 rounded-[28px] text-center space-y-2.5 shadow-sm animate-in fade-in duration-300">
+                            <div className="w-11 h-11 bg-rose-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-rose-200">
+                                <AlertCircle className="w-5 h-5" />
+                            </div>
+                            <h4 className="font-extrabold text-rose-950 text-base">Doctor is on Leave</h4>
+                            <p className="text-xs text-rose-700 max-w-sm mx-auto font-semibold leading-relaxed">
+                                The doctor is unavailable for consultations on {new Date(formData.date).toLocaleDateString('en-US', { dateStyle: 'medium' })}. Please select another date from the calendar above.
+                            </p>
                         </div>
                     ) : slots.length === 0 ? (
                         <div className="p-4 bg-slate-50 rounded-xl text-slate-400 text-sm text-center border border-dashed border-slate-200">
