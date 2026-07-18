@@ -163,15 +163,15 @@ export default function DoctorManageSlotsPage() {
     };
 
     const handleToggleLeave = () => {
-        if (!selectedClinicId || !selectedDate) {
-            window.alert("Please select a clinic and date first");
+        if (!selectedDate) {
+            window.alert("Please select a date first");
             return;
         }
         const newStatus = !isOnLeave;
         setTogglingLeave(true);
         doctorService.toggleLeave({
             doctor_id: id,
-            clinic_id: selectedClinicId,
+            clinic_id: selectedClinicId || "",
             leave_date: selectedDate,
             status: newStatus ? 1 : 0,
             reason: newStatus ? "Doctor on leave" : ""
@@ -479,30 +479,47 @@ export default function DoctorManageSlotsPage() {
                                     </div>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={handleToggleLeave}
-                                    disabled={togglingLeave || !selectedClinicId || !selectedDate}
-                                    className={`px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shrink-0 shadow-md ${
-                                        isOnLeave
-                                            ? "bg-white text-rose-600 hover:bg-rose-50 border border-rose-200"
-                                            : "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-900/20"
-                                    } disabled:opacity-50`}
-                                >
-                                    {togglingLeave ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : isOnLeave ? (
-                                        <>
-                                            <ToggleLeft className="w-5 h-5 text-rose-500" />
-                                            Turn Leave OFF
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ToggleRight className="w-5 h-5 text-white" />
-                                            Mark Day as Leave
-                                        </>
-                                    )}
-                                </button>
+                                <div className="flex items-center gap-4 shrink-0">
+                                    {/* Interactive Toggle Switch */}
+                                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={isOnLeave}
+                                            disabled={togglingLeave || !selectedDate}
+                                            onChange={handleToggleLeave}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-14 h-8 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-rose-600 shadow-inner"></div>
+                                        <span className="ml-2 text-xs font-bold text-slate-700 hidden sm:inline-block">
+                                            {isOnLeave ? "On Leave" : "Active"}
+                                        </span>
+                                    </label>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleToggleLeave}
+                                        disabled={togglingLeave || !selectedDate}
+                                        className={`px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shrink-0 shadow-md ${
+                                            isOnLeave
+                                                ? "bg-white text-rose-600 hover:bg-rose-50 border border-rose-200"
+                                                : "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-900/20"
+                                        } disabled:opacity-50`}
+                                    >
+                                        {togglingLeave ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : isOnLeave ? (
+                                            <>
+                                                <ToggleLeft className="w-5 h-5 text-rose-500" />
+                                                Turn Leave OFF
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ToggleRight className="w-5 h-5 text-white" />
+                                                Mark Day as Leave
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         )}
 

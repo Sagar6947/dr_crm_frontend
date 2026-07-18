@@ -223,7 +223,10 @@ export const doctorService = {
     getSlots: (doctorId: string, clinicId: string, date?: string, isRecurring?: boolean | string, signal?: AbortSignal) => {
         let url = `/doctor/getDoctorSlots?doctor_id=${doctorId}&clinic_id=${clinicId}`;
         if (date) url += `&date=${date}`;
-        if (isRecurring !== undefined) url += `&is_recurring=${isRecurring ? '1' : '0'}`;
+        if (isRecurring !== undefined) {
+            const val = (isRecurring === true || isRecurring === '1' || String(isRecurring) === 'true') ? '1' : '0';
+            url += `&is_recurring=${val}`;
+        }
         return request(url, { signal });
     },
     addSlot: (formData: any, signal?: AbortSignal) => {
