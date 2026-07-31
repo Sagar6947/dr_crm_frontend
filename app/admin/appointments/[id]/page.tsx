@@ -207,6 +207,47 @@ const statusConfig: Record<string, { color: string; bg: string; icon: React.Reac
     completed:  { color: "text-blue-700",   bg: "bg-blue-50",   icon: <CheckCircle2 className="w-4 h-4" /> },
     cancelled:  { color: "text-red-600",    bg: "bg-red-50",    icon: <XCircle className="w-4 h-4" /> },
 };
+const formatDateOnly = (dateStr: string) => {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr.replace(/-/g, '/'));
+    if (isNaN(d.getTime())) return dateStr;
+    const day = d.getDate();
+    const month = d.toLocaleString('en-US', { month: 'long' });
+    const year = d.getFullYear();
+    return `${day} ${month}, ${year}`;
+};
+
+const formatTimeOnly = (timeStr: string) => {
+    if (!timeStr) return "";
+    const [h, m] = timeStr.split(':');
+    if (!h || !m) return timeStr;
+    let hour = parseInt(h, 10);
+    if (isNaN(hour)) return timeStr;
+    if (timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm')) return timeStr;
+    const minute = parseInt(m, 10).toString().padStart(2, '0');
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    hour = hour || 12;
+    return `${hour}:${minute} ${ampm}`;
+};
+
+const formatBookedParts = (dateStr: string) => {
+    if (!dateStr) return { date: "—", time: "" };
+    const d = new Date(dateStr.replace(/-/g, '/'));
+    if (isNaN(d.getTime())) return { date: dateStr, time: "" };
+    const day = d.getDate();
+    const month = d.toLocaleString('en-US', { month: 'long' });
+    const year = d.getFullYear();
+    let hour = d.getHours();
+    const minute = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    hour = hour || 12;
+    return {
+        date: `${day} ${month}, ${year}`,
+        time: `${hour}:${minute} ${ampm}`
+    };
+};
 
 export default function AppointmentDetailPage() {
     const [apt, setApt] = useState<any>(null);
@@ -222,8 +263,12 @@ export default function AppointmentDetailPage() {
         setIsUpdatingPayment(true);
         try {
             await appointmentService.updatePaymentStatus(apt.id, newStatus);
-            setApt({ ...apt, payment_status: newStatus });
-            sessionStorage.setItem("apt_detail", JSON.stringify({ ...apt, payment_status: newStatus }));
+            const updatedApt = { ...apt, payment_status: newStatus };
+            if (updatedApt.payment) {
+                updatedApt.payment.status = newStatus;
+            }
+            setApt(updatedApt);
+            sessionStorage.setItem("apt_detail", JSON.stringify(updatedApt));
         } catch (error) {
             console.error("Failed to update payment status", error);
             alert("Failed to update payment status. Please try again.");
@@ -302,14 +347,30 @@ export default function AppointmentDetailPage() {
                             </h2>
                             <div className="grid grid-cols-2 gap-4">
                                 {[
-                                    { icon: <Clock className="w-4 h-4" />,    label: "Date",    value: apt.appointment_date },
-                                    { icon: <Clock className="w-4 h-4" />,    label: "Time",    value: apt.appointment_time },
+                                    { 
+                                        icon: <Clock className="w-4 h-4" />,    
+                                        label: "Booked Date", 
+                                        value: formatBookedParts(apt.booked_appointment_date).date,
+                                        subValue: formatBookedParts(apt.booked_appointment_date).time
+                                    },
+                                    { 
+                                        icon: <CalendarCheck className="w-4 h-4" />, 
+                                        label: "Booked Slot", 
+                                        value: formatDateOnly(apt.appointment_date),
+                                        subValue: formatTimeOnly(apt.appointment_time)
+                                    },
                                     { icon: <FileText className="w-4 h-4" />, label: "Mode",    value: apt.consultation_mode || "—" },
                                     { icon: <FileText className="w-4 h-4" />, label: "Payment Mode", value: ((apt.payment?.mode || apt.payment_mode) === 'online' ? 'Razorpay' : ((apt.payment?.mode || apt.payment_mode) === 'pay_at_visit' ? 'Clinic' : ((apt.payment?.mode || apt.payment_mode) || "—"))) + ((apt.payment?.amount || apt.payment_amount) ? ` (₹${Number(apt.payment?.amount || apt.payment_amount).toFixed(0)})` : '') },
-                                ].map((item, i) => (
+                                    ...( (apt.razorpay_payment_id || apt.payment?.razorpay_payment_id) ? [{
+                                        icon: <FileText className="w-4 h-4" />,
+                                        label: "Payment ID",
+                                        value: apt.razorpay_payment_id || apt.payment?.razorpay_payment_id
+                                    }] : [])
+                                ].map((item: any, i) => (
                                     <div key={i} className="bg-slate-50 rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">{item.icon} {item.label}</div>
-                                        <div className="font-semibold text-slate-800 text-sm capitalize">{item.value}</div>
+                                        <div className={`font-semibold text-slate-800 text-sm ${item.label === 'Payment ID' ? '' : 'capitalize'}`}>{item.value}</div>
+                                        {item.subValue && <div className="text-xs text-slate-500 mt-1">{item.subValue}</div>}
                                     </div>
                                 ))}
                             </div>

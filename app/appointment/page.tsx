@@ -26,7 +26,7 @@ import {
     Trash2,
     X,
 } from "lucide-react";
-import { clinicService, geoService, appointmentService, patientService, doctorService } from "@/lib/api";
+import { clinicService, geoService, appointmentService, patientService, doctorService, settingsService } from "@/lib/api";
 
 // --- MOCK DATA ---
 const TIME_SLOTS = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
@@ -102,6 +102,22 @@ export default function AppointmentWizard() {
     const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [customAlert, setCustomAlert] = useState<string | null>(null);
+    const [maintenanceMode, setMaintenanceMode] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        settingsService.getPublicSettings()
+            .then((res: any) => {
+                const searchParams = new URLSearchParams(window.location.search);
+                const isDebug = searchParams.get('debug') === 'on';
+                
+                if (res?.data?.maintenance_mode === 'on' && !isDebug) {
+                    setMaintenanceMode(true);
+                } else {
+                    setMaintenanceMode(false);
+                }
+            })
+            .catch(() => setMaintenanceMode(false));
+    }, []);
 
     const showCustomAlert = (msg: string) => {
         setCustomAlert(msg);
@@ -131,6 +147,25 @@ export default function AppointmentWizard() {
     const updateFields = (fields: Partial<FormData>) => {
         setFormData((prev) => ({ ...prev, ...fields }));
     };
+
+    if (maintenanceMode === true) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-xl shadow-slate-200/50">
+                    <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <AlertCircle className="w-10 h-10 text-amber-500" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-3">System Under Maintenance</h1>
+                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                        We are currently performing scheduled maintenance to improve our services. Appointment booking is temporarily unavailable. Please check back later.
+                    </p>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-50 py-3 rounded-xl">
+                        Thank you for your patience
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const next = () => setCurrentStep((prev) => prev + 1);
     const back = () => setCurrentStep((prev) => prev - 1);

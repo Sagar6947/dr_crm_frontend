@@ -10,7 +10,7 @@ import {
     ToggleLeft, ToggleRight, CreditCard, Loader2, Eye, EyeOff
 } from "lucide-react";
 
-type SettingTab = "profile" | "clinic" | "notifications" | "security" | "appearance" | "payment";
+type SettingTab = "profile" | "clinic" | "notifications" | "security" | "appearance" | "payment" | "system";
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<SettingTab>("profile");
@@ -53,12 +53,13 @@ export default function SettingsPage() {
         dateFormat: "DD MMM YYYY",
     });
 
-    const [paymentSettings, setPaymentSettings] = useState({
+    const [globalSettings, setGlobalSettings] = useState({
         razorpay_mode: "test",
         razorpay_test_key_id: "",
         razorpay_test_key_secret: "",
         razorpay_live_key_id: "",
-        razorpay_live_key_secret: ""
+        razorpay_live_key_secret: "",
+        maintenance_mode: "off"
     });
 
     useEffect(() => {
@@ -66,7 +67,7 @@ export default function SettingsPage() {
         settingsService.getSettings()
             .then((res: any) => {
                 if (res.data) {
-                    setPaymentSettings(prev => ({ ...prev, ...res.data }));
+                    setGlobalSettings(prev => ({ ...prev, ...res.data }));
                 }
             })
             .catch(err => console.error(err))
@@ -74,9 +75,9 @@ export default function SettingsPage() {
     }, []);
 
     const handleSave = () => {
-        if (activeTab === "payment") {
+        if (activeTab === "payment" || activeTab === "system") {
             setSaved(false);
-            settingsService.updateSettings(paymentSettings)
+            settingsService.updateSettings(globalSettings)
                 .then(() => {
                     setSaved(true);
                     setTimeout(() => setSaved(false), 2500);
@@ -94,6 +95,7 @@ export default function SettingsPage() {
         { key: "notifications", label: "Notifications", icon: Bell },
         { key: "security", label: "Security", icon: Shield },
         { key: "payment", label: "Payment Gateway", icon: CreditCard },
+        { key: "system", label: "System Status", icon: Globe },
         { key: "appearance", label: "Appearance", icon: Palette },
     ];
 
@@ -362,17 +364,17 @@ export default function SettingsPage() {
                                             <div className="flex flex-col items-end gap-2">
                                                 <button
                                                     type="button"
-                                                    onClick={() => setPaymentSettings(p => ({ ...p, razorpay_mode: p.razorpay_mode === 'live' ? 'test' : 'live' }))}
-                                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${paymentSettings.razorpay_mode === 'live' ? 'bg-medical-teal' : 'bg-slate-300'
+                                                    onClick={() => setGlobalSettings(p => ({ ...p, razorpay_mode: p.razorpay_mode === 'live' ? 'test' : 'live' }))}
+                                                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${globalSettings.razorpay_mode === 'live' ? 'bg-medical-teal' : 'bg-slate-300'
                                                         }`}
                                                 >
                                                     <span
-                                                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm ${paymentSettings.razorpay_mode === 'live' ? 'translate-x-6' : 'translate-x-1'
+                                                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm ${globalSettings.razorpay_mode === 'live' ? 'translate-x-6' : 'translate-x-1'
                                                             }`}
                                                     />
                                                 </button>
-                                                <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${paymentSettings.razorpay_mode === 'live' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-                                                    {paymentSettings.razorpay_mode} mode
+                                                <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${globalSettings.razorpay_mode === 'live' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                                    {globalSettings.razorpay_mode} mode
                                                 </span>
                                             </div>
                                         </div>
@@ -389,8 +391,8 @@ export default function SettingsPage() {
                                                     <div className="relative group">
                                                         <input
                                                             type={showKeys.testId ? "text" : "password"}
-                                                            value={paymentSettings.razorpay_test_key_id}
-                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_test_key_id: e.target.value })}
+                                                            value={globalSettings.razorpay_test_key_id}
+                                                            onChange={e => setGlobalSettings({ ...globalSettings, razorpay_test_key_id: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
                                                         />
                                                         <button
@@ -407,8 +409,8 @@ export default function SettingsPage() {
                                                     <div className="relative group">
                                                         <input
                                                             type={showKeys.testSecret ? "text" : "password"}
-                                                            value={paymentSettings.razorpay_test_key_secret}
-                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_test_key_secret: e.target.value })}
+                                                            value={globalSettings.razorpay_test_key_secret}
+                                                            onChange={e => setGlobalSettings({ ...globalSettings, razorpay_test_key_secret: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-amber-400 outline-none"
                                                         />
                                                         <button
@@ -433,8 +435,8 @@ export default function SettingsPage() {
                                                     <div className="relative group">
                                                         <input
                                                             type={showKeys.liveId ? "text" : "password"}
-                                                            value={paymentSettings.razorpay_live_key_id}
-                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_live_key_id: e.target.value })}
+                                                            value={globalSettings.razorpay_live_key_id}
+                                                            onChange={e => setGlobalSettings({ ...globalSettings, razorpay_live_key_id: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
                                                         />
                                                         <button
@@ -451,8 +453,8 @@ export default function SettingsPage() {
                                                     <div className="relative group">
                                                         <input
                                                             type={showKeys.liveSecret ? "text" : "password"}
-                                                            value={paymentSettings.razorpay_live_key_secret}
-                                                            onChange={e => setPaymentSettings({ ...paymentSettings, razorpay_live_key_secret: e.target.value })}
+                                                            value={globalSettings.razorpay_live_key_secret}
+                                                            onChange={e => setGlobalSettings({ ...globalSettings, razorpay_live_key_secret: e.target.value })}
                                                             className="w-full bg-slate-50 border-none rounded-2xl py-3 pl-4 pr-12 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
                                                         />
                                                         <button
@@ -468,6 +470,44 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* ── SYSTEM STATUS ── */}
+                        {activeTab === "system" && (
+                            <div className="medical-card !rounded-3xl space-y-6">
+                                <div className="flex items-center gap-3 pb-4 border-b border-slate-50">
+                                    <div className="w-10 h-10 bg-teal-50 rounded-2xl flex items-center justify-center text-medical-teal">
+                                        <Globe className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800">System Status</p>
+                                        <p className="text-xs text-slate-400">Manage Maintenance Mode and Portal Availability</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-sm">Maintenance Mode</h4>
+                                            <p className="text-xs text-slate-500 mt-1">When enabled, the public appointment form will be disabled.</p>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setGlobalSettings(p => ({ ...p, maintenance_mode: p.maintenance_mode === 'on' ? 'off' : 'on' }))}
+                                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${globalSettings.maintenance_mode === 'on' ? 'bg-amber-500' : 'bg-slate-300'}`}
+                                            >
+                                                <span
+                                                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-sm ${globalSettings.maintenance_mode === 'on' ? 'translate-x-6' : 'translate-x-1'}`}
+                                                />
+                                            </button>
+                                            <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${globalSettings.maintenance_mode === 'on' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                                {globalSettings.maintenance_mode === 'on' ? 'Active' : 'Disabled'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
