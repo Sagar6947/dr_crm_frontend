@@ -397,6 +397,9 @@ export const settingsService = {
   getSettings: (signal?: AbortSignal) => {
     return request('/settings', { signal });
   },
+  getPublicSettings: (signal?: AbortSignal) => {
+    return request('/settings/public', { signal });
+  },
   updateSettings: (data: any, signal?: AbortSignal) => {
     return request('/settings/update', {
       method: 'POST',

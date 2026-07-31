@@ -162,13 +162,15 @@ export default function AppointmentsPage() {
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-slate-100">
+                                    <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Booked Date</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">ID</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Patient</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Doctor</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Clinic</th>
-                                    <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Date & Time</th>
+                                    <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Booked Slot</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden lg:table-cell">Mode</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Payment</th>
+                                    <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3 hidden lg:table-cell">Payment ID</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Status</th>
                                     <th className="text-left text-xs font-bold text-slate-400 uppercase tracking-wide px-5 py-3">Action</th>
                                 </tr>
@@ -176,7 +178,7 @@ export default function AppointmentsPage() {
                             <tbody>
                                 {isLoading ? (
                                     <tr>
-                                        <td colSpan={8} className="py-20 text-center">
+                                        <td colSpan={11} className="py-20 text-center">
                                             <div className="flex items-center justify-center gap-2 text-slate-400 text-sm">
                                                 <Loader2 className="w-4 h-4 animate-spin" /> Loading appointments...
                                             </div>
@@ -184,14 +186,65 @@ export default function AppointmentsPage() {
                                     </tr>
                                 ) : filtered.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="py-16 text-center text-slate-400 text-sm">
+                                        <td colSpan={11} className="py-16 text-center text-slate-400 text-sm">
                                             No appointments found.
                                         </td>
                                     </tr>
                                 ) : filtered.map((apt, i) => {
                                     const cfg = getStatusCfg(apt.status);
+                                    
+                                    const formatDateOnly = (dateStr: string) => {
+                                        if (!dateStr) return "—";
+                                        const d = new Date(dateStr.replace(/-/g, '/'));
+                                        if (isNaN(d.getTime())) return dateStr;
+                                        const day = d.getDate();
+                                        const month = d.toLocaleString('en-US', { month: 'long' });
+                                        const year = d.getFullYear();
+                                        return `${day} ${month}, ${year}`;
+                                    };
+
+                                    const formatTimeOnly = (timeStr: string) => {
+                                        if (!timeStr) return "";
+                                        const [h, m] = timeStr.split(':');
+                                        if (!h || !m) return timeStr;
+                                        let hour = parseInt(h, 10);
+                                        if (isNaN(hour)) return timeStr;
+                                        if (timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm')) return timeStr;
+                                        const minute = parseInt(m, 10).toString().padStart(2, '0');
+                                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                                        hour = hour % 12;
+                                        hour = hour || 12;
+                                        return `${hour}:${minute} ${ampm}`;
+                                    };
+
+                                    const formatBookedParts = (dateStr: string) => {
+                                        if (!dateStr) return { date: "—", time: "" };
+                                        const d = new Date(dateStr.replace(/-/g, '/'));
+                                        if (isNaN(d.getTime())) return { date: dateStr, time: "" };
+                                        const day = d.getDate();
+                                        const month = d.toLocaleString('en-US', { month: 'long' });
+                                        const year = d.getFullYear();
+                                        let hour = d.getHours();
+                                        const minute = d.getMinutes().toString().padStart(2, '0');
+                                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                                        hour = hour % 12;
+                                        hour = hour || 12;
+                                        return {
+                                            date: `${day} ${month}, ${year}`,
+                                            time: `${hour}:${minute} ${ampm}`
+                                        };
+                                    };
+
                                     return (
                                         <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-5 py-4 hidden md:table-cell">
+                                                <div className="text-sm text-slate-800 font-medium">
+                                                    {formatBookedParts(apt.booked_appointment_date).date}
+                                                </div>
+                                                <div className="text-xs text-slate-400">
+                                                    {formatBookedParts(apt.booked_appointment_date).time}
+                                                </div>
+                                            </td>
                                             <td className="px-5 py-4 text-xs font-mono text-slate-500">{apt.appointment_code}</td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
@@ -210,8 +263,8 @@ export default function AppointmentsPage() {
                                                 {apt.clinic?.name || "—"}
                                             </td>
                                             <td className="px-5 py-4 hidden md:table-cell">
-                                                <div className="text-sm text-slate-800 font-medium">{apt.appointment_date}</div>
-                                                <div className="text-xs text-slate-400">{apt.appointment_time}</div>
+                                                <div className="text-sm text-slate-800 font-medium">{formatDateOnly(apt.appointment_date)}</div>
+                                                <div className="text-xs text-slate-400">{formatTimeOnly(apt.appointment_time)}</div>
                                             </td>
                                             <td className="px-5 py-4 hidden lg:table-cell">
                                                 <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg font-medium capitalize">
@@ -224,6 +277,9 @@ export default function AppointmentsPage() {
                                                     {(apt.payment?.amount || apt.payment_amount) ? ` (₹${Number(apt.payment?.amount || apt.payment_amount).toFixed(0)})` : ''}
                                                 </div>
                                                 <div className={`text-[10px] uppercase tracking-wider font-bold mt-0.5 ${(apt.payment?.status || apt.payment_status) === 'completed' ? 'text-green-600' : 'text-orange-500'}`}>{(apt.payment?.status || apt.payment_status) || 'Pending'}</div>
+                                            </td>
+                                            <td className="px-5 py-4 hidden lg:table-cell text-sm text-slate-600 font-mono">
+                                                {apt.razorpay_payment_id || apt.payment?.razorpay_payment_id || "—"}
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg capitalize ${cfg.color}`}>
