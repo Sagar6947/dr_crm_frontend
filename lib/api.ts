@@ -45,6 +45,13 @@ export async function request(endpoint: string, options: RequestInit = {}) {
 
     // ❗ API error handling
     if (!response.ok || data.status !== 200) {
+      if (data.status === 401 && typeof window !== 'undefined') {
+        document.cookie = "adminToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        if (window.location.pathname !== '/admin/login') {
+          window.location.href = '/admin/login';
+          return new Promise(() => {});
+        }
+      }
       throw data;
     }
 
