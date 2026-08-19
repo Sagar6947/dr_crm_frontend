@@ -9,15 +9,14 @@ import {
     CalendarCheck, Plus, Search, Eye, FileText,
     Clock, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight, Loader2
 } from "lucide-react";
-import { appointmentService } from "@/lib/api";
-import { request } from "@/lib/api";
+import { appointmentService, patientService, doctorService, clinicService, request } from "@/lib/api";
 
 const statusConfig: Record<string, { color: string; icon: React.ReactNode }> = {
-    confirmed:  { color: "bg-teal-50 text-teal-700",   icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    scheduled:  { color: "bg-teal-50 text-teal-700",   icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    pending:    { color: "bg-yellow-50 text-yellow-700", icon: <AlertCircle className="w-3.5 h-3.5" /> },
-    completed:  { color: "bg-blue-50 text-blue-700",   icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    cancelled:  { color: "bg-red-50 text-red-600",     icon: <XCircle className="w-3.5 h-3.5" /> },
+    confirmed: { color: "bg-teal-50 text-teal-700", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    scheduled: { color: "bg-teal-50 text-teal-700", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    pending: { color: "bg-yellow-50 text-yellow-700", icon: <AlertCircle className="w-3.5 h-3.5" /> },
+    completed: { color: "bg-blue-50 text-blue-700", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    cancelled: { color: "bg-red-50 text-red-600", icon: <XCircle className="w-3.5 h-3.5" /> },
 };
 
 const LIMIT = 10;
@@ -27,6 +26,18 @@ export default function AppointmentsPage() {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
+    const [selectedPatient, setSelectedPatient] = useState("");
+    const [selectedDoctor, setSelectedDoctor] = useState("");
+    const [selectedClinic, setSelectedClinic] = useState("");
+
+    const [dateFilterType, setDateFilterType] = useState<"booked" | "appointment">("booked");
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
+
+    const [patientsList, setPatientsList] = useState<any[]>([]);
+    const [doctorsList, setDoctorsList] = useState<any[]>([]);
+    const [clinicsList, setClinicsList] = useState<any[]>([]);
+
     const [isLoading, setIsLoading] = useState(true);
     const [pagination, setPagination] = useState({
         total_records: 0,
@@ -36,18 +47,32 @@ export default function AppointmentsPage() {
 
     const abortRef = useRef<AbortController | null>(null);
 
-   const fetchAppointments = async (page = 1, search = debouncedSearch) => {
+    const fetchAppointments = async (page = 1, search = debouncedSearch) => {
         if (abortRef.current) abortRef.current.abort("Cancel previous request");
         const controller = new AbortController();
         abortRef.current = controller;
 
         setIsLoading(true);
         try {
-            const body = new URLSearchParams({
+            const params: Record<string, string> = {
                 page_no: String(page),
                 limit: String(LIMIT),
                 search: search,
-            }).toString();
+            };
+            if (selectedPatient) params.patient_id = selectedPatient;
+            if (selectedDoctor) params.doctor_id = selectedDoctor;
+            if (selectedClinic) params.clinic_id = selectedClinic;
+
+            if (fromDate) {
+                if (dateFilterType === "booked") params.booked_from = fromDate;
+                else params.appointment_from = fromDate;
+            }
+            if (toDate) {
+                if (dateFilterType === "booked") params.booked_to = toDate;
+                else params.appointment_to = toDate;
+            }
+
+            const body = new URLSearchParams(params).toString();
 
             const data = await request("/appointment/list", {
                 method: "POST",
@@ -57,7 +82,11 @@ export default function AppointmentsPage() {
 
             setAppointments(data.data || []);
             if (data.pagination) setPagination(data.pagination);
-            else setPagination(prev => ({ ...prev, total_records: data.total_records || 0 }));
+            else setPagination(prev => ({ 
+                ...prev, 
+                total_records: data.total_records || 0,
+                total_pages: Math.ceil((data.total_records || 0) / LIMIT) || 1
+            }));
 
         } catch (err: any) {
             if (err?.name === "AbortError") return;
@@ -76,11 +105,30 @@ export default function AppointmentsPage() {
         return () => clearTimeout(t);
     }, [search, debouncedSearch]);
 
-    // 2. Fetch data when page or search changes
+    // 2. Fetch data when page, search, or filters change
     useEffect(() => {
         fetchAppointments(pagination.current_page, debouncedSearch);
         return () => { if (abortRef.current) abortRef.current.abort("Component unmounted or page changed"); };
-    }, [pagination.current_page, debouncedSearch]);
+    }, [pagination.current_page, debouncedSearch, selectedPatient, selectedDoctor, selectedClinic, fromDate, toDate, dateFilterType]);
+
+    // 3. Fetch filter options once
+    useEffect(() => {
+        const fetchFilters = async () => {
+            try {
+                const [pRes, dRes, cRes] = await Promise.all([
+                    patientService.getAll({ page_no: 1, limit: 1000 }),
+                    doctorService.getAll({ page_no: 1, limit: 1000 }),
+                    clinicService.getAll({ page_no: 1, limit: 1000 })
+                ]);
+                if (pRes.data) setPatientsList(pRes.data);
+                if (dRes.data) setDoctorsList(dRes.data);
+                if (cRes.data) setClinicsList(cRes.data);
+            } catch (e) {
+                console.error("Error fetching filters", e);
+            }
+        };
+        fetchFilters();
+    }, []);
 
     // Client-side status filter (since API may not support it)
     const filtered = statusFilter === "All"
@@ -110,7 +158,7 @@ export default function AppointmentsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
                         { label: "Total Appointments", value: pagination.total_records, icon: <CalendarCheck className="w-5 h-5" />, change: "All time", up: true },
-                        { label: "Confirmed", value: appointments.filter(a => ["confirmed","scheduled"].includes(a.status?.toLowerCase())).length, icon: <CheckCircle2 className="w-5 h-5" />, change: "This page", up: true },
+                        { label: "Confirmed", value: appointments.filter(a => ["confirmed", "scheduled"].includes(a.status?.toLowerCase())).length, icon: <CheckCircle2 className="w-5 h-5" />, change: "This page", up: true },
                         { label: "Pending", value: appointments.filter(a => a.status?.toLowerCase() === "pending").length, icon: <Clock className="w-5 h-5" />, change: "Needs action", up: false },
                         { label: "Cancelled", value: appointments.filter(a => a.status?.toLowerCase() === "cancelled").length, icon: <XCircle className="w-5 h-5" />, change: "This page", up: false },
                     ].map((s, i) => (
@@ -133,27 +181,101 @@ export default function AppointmentsPage() {
                 <div className="bg-white rounded-2xl border border-slate-100">
 
                     {/* TOOLBAR */}
-                    <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                        <div className="relative w-full sm:w-72">
-                            {isLoading
-                                ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-500 animate-spin" />
-                                : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            }
-                            <input
-                                type="text"
-                                placeholder="Search patient, doctor, ID..."
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="w-full bg-slate-50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none"
-                            />
+                    <div className="p-5 border-b border-slate-100 flex flex-col gap-4">
+                        {/* ROW 1: Search & Status */}
+                        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                            <div className="relative w-full sm:w-96">
+                                {isLoading
+                                    ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-500 animate-spin" />
+                                    : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                }
+                                <input
+                                    type="text"
+                                    placeholder="Search patient, doctor, payment ID..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    className="w-full bg-slate-50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none"
+                                />
+                            </div>
+                            <div className="flex items-center">
+                                <select 
+                                    value={statusFilter} 
+                                    onChange={e => { setStatusFilter(e.target.value); setPagination(p => ({...p, current_page: 1})); }}
+                                    className="bg-teal-50 text-teal-700 font-semibold rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 border-none cursor-pointer capitalize"
+                                >
+                                    {["All", "scheduled", "completed", "cancelled"].map(s => (
+                                        <option key={s} value={s} className="capitalize">{s}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {["All", "scheduled", "confirmed", "pending", "completed", "cancelled"].map(s => (
-                                <button key={s} onClick={() => setStatusFilter(s)}
-                                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors capitalize ${statusFilter === s ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                                    {s}
-                                </button>
-                            ))}
+
+                        {/* ROW 2: Filters */}
+                        <div className="flex items-center gap-3 w-full overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+                            <select 
+                                value={selectedPatient} 
+                                onChange={e => { setSelectedPatient(e.target.value); setPagination(p => ({...p, current_page: 1})); }}
+                                className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none cursor-pointer flex-shrink-0"
+                            >
+                                <option value="">All Patients</option>
+                                {patientsList.map(p => (
+                                    <option key={p.id} value={p.id}>{p.full_name} ({p.phone})</option>
+                                ))}
+                            </select>
+                            
+                            <select 
+                                value={selectedDoctor} 
+                                onChange={e => { setSelectedDoctor(e.target.value); setPagination(p => ({...p, current_page: 1})); }}
+                                className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none cursor-pointer flex-shrink-0"
+                            >
+                                <option value="">All Doctors</option>
+                                {doctorsList.map(d => (
+                                    <option key={d.id} value={d.id}>{d.full_name}</option>
+                                ))}
+                            </select>
+
+                            <select 
+                                value={selectedClinic} 
+                                onChange={e => { setSelectedClinic(e.target.value); setPagination(p => ({...p, current_page: 1})); }}
+                                className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none cursor-pointer flex-shrink-0"
+                            >
+                                <option value="">All Clinics</option>
+                                {clinicsList.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+
+                            <div className="flex items-center gap-2 border-l border-slate-200 pl-3 ml-1 flex-shrink-0">
+                                <select 
+                                    value={dateFilterType} 
+                                    onChange={e => { setDateFilterType(e.target.value as any); setPagination(p => ({...p, current_page: 1})); }}
+                                    className="bg-slate-50 rounded-xl px-2 py-2.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none cursor-pointer"
+                                >
+                                    <option value="booked">Booked Date</option>
+                                    <option value="appointment">Appt Date</option>
+                                </select>
+                                <input 
+                                    type="date" 
+                                    value={fromDate}
+                                    onChange={e => { setFromDate(e.target.value); setPagination(p => ({...p, current_page: 1})); }}
+                                    className="bg-slate-50 rounded-xl px-2 py-2.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none"
+                                />
+                                <span className="text-slate-400 text-xs">to</span>
+                                <input 
+                                    type="date" 
+                                    value={toDate}
+                                    onChange={e => { setToDate(e.target.value); setPagination(p => ({...p, current_page: 1})); }}
+                                    className="bg-slate-50 rounded-xl px-2 py-2.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 border-none"
+                                />
+                                {(fromDate || toDate) && (
+                                    <button 
+                                        onClick={() => { setFromDate(""); setToDate(""); setPagination(p => ({...p, current_page: 1})); }}
+                                        className="text-xs text-red-500 hover:text-red-700 font-semibold px-2"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -192,7 +314,7 @@ export default function AppointmentsPage() {
                                     </tr>
                                 ) : filtered.map((apt, i) => {
                                     const cfg = getStatusCfg(apt.status);
-                                    
+
                                     const formatDateOnly = (dateStr: string) => {
                                         if (!dateStr) return "—";
                                         const d = new Date(dateStr.replace(/-/g, '/'));
