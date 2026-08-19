@@ -195,7 +195,7 @@ import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
     ArrowLeft, CalendarCheck, Clock, User, Stethoscope,
-    Hospital, FileText, CheckCircle2, XCircle, AlertCircle
+    Hospital, FileText, CheckCircle2, XCircle, AlertCircle, ChevronDown
 } from "lucide-react";
 
 import { appointmentService } from "@/lib/api";
@@ -252,11 +252,38 @@ const formatBookedParts = (dateStr: string) => {
 export default function AppointmentDetailPage() {
     const [apt, setApt] = useState<any>(null);
     const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
     useEffect(() => {
         const stored = sessionStorage.getItem("apt_detail");
         if (stored) setApt(JSON.parse(stored));
     }, []);
+
+    const handleStatusSelect = (newStatus: string) => {
+        setPendingStatus(newStatus);
+        setIsConfirmOpen(true);
+    };
+
+    const confirmUpdateStatus = async () => {
+        if (!apt?.id || !pendingStatus) return;
+        
+        setIsConfirmOpen(false);
+        setIsUpdatingStatus(true);
+        try {
+            await appointmentService.updateStatus(apt.id, pendingStatus);
+            const updatedApt = { ...apt, status: pendingStatus };
+            setApt(updatedApt);
+            sessionStorage.setItem("apt_detail", JSON.stringify(updatedApt));
+            setPendingStatus(null);
+        } catch (error) {
+            console.error("Failed to update status", error);
+            alert("Failed to update status. Please try again.");
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    };
 
     const handleUpdatePaymentStatus = async (newStatus: string) => {
         if (!apt?.id) return;
@@ -316,9 +343,30 @@ export default function AppointmentDetailPage() {
                         <div className="bg-white rounded-2xl border border-slate-100 p-6">
                             <div className="flex items-center justify-between mb-3">
                                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Status</h2>
-                                <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-xl capitalize ${cfg.bg} ${cfg.color}`}>
-                                    {cfg.icon} {status}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-xl capitalize ${cfg.bg} ${cfg.color}`}>
+                                        {cfg.icon}
+                                        {status.toLowerCase() === 'completed' || status.toLowerCase() === 'cancelled' ? (
+                                            <span>{status}</span>
+                                        ) : (
+                                            <div className="relative inline-flex items-center">
+                                                <select
+                                                    value={status.toLowerCase()}
+                                                    onChange={(e) => handleStatusSelect(e.target.value)}
+                                                    disabled={isUpdatingStatus}
+                                                    className={`bg-transparent outline-none cursor-pointer font-bold capitalize ${cfg.color} disabled:opacity-50 pr-5`}
+                                                    style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
+                                                >
+                                                    <option value="scheduled" className="text-slate-800 font-medium bg-white">Scheduled</option>
+                                                    <option value="completed" className="text-slate-800 font-medium bg-white">Completed</option>
+                                                    <option value="cancelled" className="text-slate-800 font-medium bg-white">Cancelled</option>
+                                                </select>
+                                                <ChevronDown className="w-4 h-4 opacity-70 absolute right-0 pointer-events-none" />
+                                            </div>
+                                        )}
+                                    </span>
+                                    {isUpdatingStatus && <span className="text-xs text-slate-500 animate-pulse">Updating...</span>}
+                                </div>
                             </div>
                         </div>
 
@@ -463,9 +511,6 @@ export default function AppointmentDetailPage() {
                         <div className="bg-teal-600 rounded-2xl p-6 text-white">
                             <h2 className="text-sm font-bold uppercase tracking-wide mb-4">Quick Actions</h2>
                             <div className="space-y-2">
-                                <button className="w-full bg-white/20 hover:bg-white/30 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
-                                    Send Reminder
-                                </button>
                                 {apt.patient?.id && (
                                     <Link href={`/admin/patients/${apt.patient.id}`}
                                         className="block w-full bg-white/20 hover:bg-white/30 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors text-center">
@@ -478,6 +523,33 @@ export default function AppointmentDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* CONFIRMATION MODAL */}
+            {isConfirmOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl border border-slate-100">
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Change Appointment Status</h3>
+                        <p className="text-sm text-slate-600 mb-6">
+                            Are you sure you want to change the status to <span className="font-bold text-slate-900 capitalize">{pendingStatus}</span>?
+                            {(pendingStatus === 'cancelled' || pendingStatus === 'completed') && " This action cannot be undone."}
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button 
+                                onClick={() => { setIsConfirmOpen(false); setPendingStatus(null); }}
+                                className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmUpdateStatus}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors"
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

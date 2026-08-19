@@ -530,7 +530,7 @@ interface StepProps {
 const Step0 = ({ formData, updateFields }: StepProps) => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-slate-900">Step 0: Patient Discovery</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Patient Discovery</h2>
             <p className="text-slate-500">Have you visited our medical center before?</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -606,6 +606,7 @@ const Step1 = ({
     const [localOtpError, setLocalOtpError] = useState("");
     const [loadingAppointments, setLoadingAppointments] = useState(false);
     const [isSendingOtp, setIsSendingOtp] = useState(false);
+    const [cancelLoadingId, setCancelLoadingId] = useState<string | null>(null);
 
     const handlePhone = (val: string) => {
         const digits = val.replace(/\D/g, "").slice(0, 10);
@@ -693,6 +694,7 @@ const Step1 = ({
 
     const handleCancelAppointment = async (id: string) => {
         try {
+            setCancelLoadingId(id);
             await appointmentService.cancelAppointment(id);
             setAppointments((prev) =>
                 prev.map((appt) =>
@@ -702,6 +704,8 @@ const Step1 = ({
             setCancellationConfirmId(null);
         } catch (error) {
             console.error("Failed to cancel appointment", error);
+        } finally {
+            setCancelLoadingId(null);
         }
     };
 
@@ -747,27 +751,44 @@ const Step1 = ({
         if (!rescheduleDate || !rescheduleTime || !rescheduleSlotId) return;
 
         try {
+            setLoadingRescheduleSlots(true);
             await appointmentService.rescheduleAppointment(id, rescheduleDate, rescheduleTime, rescheduleSlotId);
-            setAppointments((prev) => {
-                const updated = prev.map((appt) =>
-                    appt.id === id
-                        ? { ...appt, date: rescheduleDate, time: rescheduleTime, status: "Scheduled" }
-                        : appt
-                );
-
-                const updatedAppt = updated.find((appt) => appt.id === id);
-                if (updatedAppt) {
-                    setTimeout(() => {
-                        setRescheduledSlipAppointment(updatedAppt);
-                    }, 100);
-                }
-                return updated;
-            });
-
+            
+            // Update local state
+            setAppointments(appointments.map(appt => 
+                appt.id === id 
+                    ? { ...appt, date: rescheduleDate, time: rescheduleTime, status: "Scheduled" }
+                    : appt
+            ));
+            
             setReschedulingAppointmentId(null);
+            
+            // Find the updated appointment to show in the success card
+            const updatedAppt = appointments.find(a => a.id === id);
+            if (updatedAppt) {
+                setRescheduledSlipAppointment({ ...updatedAppt, date: rescheduleDate, time: rescheduleTime, status: "Scheduled" });
+            }
         } catch (error) {
             console.error("Failed to reschedule appointment", error);
+            alert("Failed to reschedule appointment. Please try again.");
+        } finally {
+            setLoadingRescheduleSlots(false);
         }
+    };
+
+    const canReschedule = (appt: any) => {
+        if (appt.paymentStatus?.toLowerCase() !== 'completed') return false;
+        
+        // We use createDate because the booking date shouldn't be older than 7 days
+        const targetDateStr = appt.createDate || appt.date;
+        if (!targetDateStr) return false;
+        
+        const bookingDate = new Date(targetDateStr);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const diffTime = today.getTime() - bookingDate.getTime();
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        return diffDays <= 7;
     };
 
     return (
@@ -1088,10 +1109,15 @@ const Step1 = ({
                                                                 </button>
                                                                 <button
                                                                     type="button"
+                                                                    disabled={cancelLoadingId === appt.id}
                                                                     onClick={() => handleCancelAppointment(appt.id)}
-                                                                    className="px-3 py-1.5 bg-red-600 border border-red-600 text-white rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-red-700 shadow-sm"
+                                                                    className="px-3 py-1.5 bg-red-600 border border-red-600 text-white rounded-lg text-[10px] font-bold uppercase transition-colors hover:bg-red-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                                                                 >
-                                                                    Yes, Cancel
+                                                                    {cancelLoadingId === appt.id ? (
+                                                                        <><Loader2 className="w-3 h-3 animate-spin" /> Cancelling...</>
+                                                                    ) : (
+                                                                        "Yes, Cancel"
+                                                                    )}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -1104,13 +1130,15 @@ const Step1 = ({
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" /> Cancel Visit
                                                             </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleStartReschedule(appt)}
-                                                                className="flex items-center gap-1.5 px-4 py-2 border border-teal-100 text-medical-teal rounded-xl text-xs font-semibold hover:bg-teal-50/50 transition-colors"
-                                                            >
-                                                                <Calendar className="w-3.5 h-3.5" /> Reschedule Visit
-                                                            </button>
+                                                            {canReschedule(appt) && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleStartReschedule(appt)}
+                                                                    className="flex items-center gap-1.5 px-4 py-2 border border-teal-100 text-medical-teal rounded-xl text-xs font-semibold hover:bg-teal-50/50 transition-colors"
+                                                                >
+                                                                    <Calendar className="w-3.5 h-3.5" /> Reschedule Visit
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>

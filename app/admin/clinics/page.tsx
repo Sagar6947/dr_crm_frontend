@@ -75,6 +75,12 @@ export default function ClinicsManager() {
         setClinics(response.data || []);
         if (response.pagination) {
           setPagination(response.pagination);
+        } else {
+          setPagination((prev) => ({
+            ...prev,
+            total_records: response.total_records || 0,
+            total_pages: Math.ceil((response.total_records || 0) / prev.limit) || 1
+          }));
         }
       } else {
         toast.error(response.message || "Failed to fetch clinics");
